@@ -18,7 +18,7 @@ This is an implementation review, not a legal opinion, trademark registration se
 | Runtime packages | There are no npm runtime dependencies or vendored runtime libraries. The server uses Node.js built-ins; Node.js and the browser are independently installed software. |
 | Scientific sources | Outbound reference links support factual content. Their page layouts, photographs, charts, logos, and extended prose are not embedded. See THIRD_PARTY_NOTICES.md and SCIENTIFIC_MODEL.md. |
 | User data | Current laboratory notes persist in the existing `titravelle-science-lab-v2` collection. Removing retired application features does not erase browser storage. |
-| Distribution scope | Package metadata lists application files explicitly, including the LICENSE rights notice. Browser profiles, caches, screenshots, downloaded test notebooks, development scripts, and `artifacts/` are excluded. The package remains private and `UNLICENSED`; LICENSE grants no general distribution or open-source rights. |
+| Distribution scope | Package metadata lists application files explicitly, including the MIT LICENSE. Browser profiles, caches, screenshots, downloaded test notebooks, development scripts, and `artifacts/` are excluded from the npm package file list. The project is MIT-licensed; `private: true` prevents accidental npm publication. |
 
 ## Authorship and source map
 
@@ -40,7 +40,7 @@ These provenance statements do not establish copyright ownership, copyrightabili
 
 ## Review limits and references
 
-The full commercial manual, every existing chemistry simulator, and trademark, patent, or registered-design databases were not exhaustively compared. No formal register clearance was performed. Public repository visibility does not change the rights-reserved licensing decision or establish legal clearance; repository checks cannot certify those decisions.
+The full commercial manual, every existing chemistry simulator, and trademark, patent, or registered-design databases were not exhaustively compared. No formal register clearance was performed. The project's MIT license and public repository visibility do not establish legal clearance for third-party material; repository checks cannot certify that clearance.
 
 - [Existing Element Lab chemistry app listing](https://apps.apple.com/us/app/element-lab-periodic-table/id6752604178): reason for replacing the earlier name.
 - [U.S. Copyright Office, Circular 33](https://www.copyright.gov/circs/circ33.pdf): source consulted on expression and underlying ideas or methods.
