@@ -78,7 +78,7 @@ The interface, lesson text, diagrams, and code were authored for this project wi
 
 ## License
 
-All rights reserved. See [LICENSE](LICENSE) for the rights notice and its scope. The GitHub repository is public; package metadata remains `private: true` to prevent accidental npm publication and `license: "UNLICENSED"`. No general redistribution or open-source license is granted. Scientific facts, equations, user-owned data and third-party rights are outside the project's ownership claim.
+Titravelle is licensed under the [MIT License](LICENSE). Copyright (c) 2026 Armann Helgason. Package metadata uses `license: "MIT"`; `private: true` prevents accidental npm publication and does not restrict the MIT license permissions. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party material and scientific references.
 
 ## Security
 
