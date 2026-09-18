@@ -14,6 +14,7 @@ import { checkOrganic } from './organic-browser-check.mjs';
 import { checkWorkspace } from './workspace-browser-check.mjs';
 import { checkBenchMaterials } from './materials-browser-check.mjs';
 import { checkElectro } from './electro-browser-check.mjs';
+import { checkSavedStateSecurity } from './security-browser-check.mjs';
 
 async function checkNavigation({base,connection,evaluate,click,waitFor,screenshot}) {
   const readState=()=>evaluate('localStorage.getItem("titravelle-science-lab-v2")');
@@ -117,6 +118,7 @@ try {
   await checkWorkspace({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkBenchMaterials({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkScienceLab({base,connection,evaluate,click,fill,text,waitFor,screenshot});
+  await checkSavedStateSecurity({connection,evaluate,waitFor});
   await checkNavigation({base,connection,evaluate,click,waitFor,screenshot});
   }
   assert.deepEqual(errors, []);

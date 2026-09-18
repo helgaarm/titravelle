@@ -21,3 +21,7 @@ Ordinary bugs and scientific-model inaccuracies can be reported in public issues
 Run `npm run check`, `npm test`, `npm run check:provenance`, and `npm run test:browser` with a local server running before merging. CI uses read-only repository permissions, pinned official actions, isolated hosted runners, and no repository secrets. Dependabot proposes action updates for review. Never execute untrusted pull-request code in a privileged `pull_request_target` job.
 
 The repository's secret scanning, push protection, private reporting, CodeQL scanning, and branch protections are GitHub settings, separate from these files. Review those settings after any repository transfer or visibility change. Automated checks reduce risk; they do not prove the absence of vulnerabilities or establish scientific accuracy.
+
+## Browser test trust boundary
+
+The browser runner is a developer tool, excluded from the server's public files. `BROWSER_PATH` explicitly selects a trusted local executable; do not take it from remote input. It launches without a shell. CDP connects to the locally launched isolated browser. Test helpers serialize JavaScript string arguments with `JSON.stringify` for `Runtime.evaluate`; those strings are never embedded in HTML or an inline script element. Browser results are JSON written to a fixed ignored artifact path, not an executable file or a path selected by the page. These intentional test operations should be distinguished from application vulnerabilities when reviewing static-analysis findings.

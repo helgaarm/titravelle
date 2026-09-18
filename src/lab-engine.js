@@ -308,12 +308,14 @@ export function validateLab(value) {
     if (!v || v.id !== e.id || !v.totals || !v.indicators || typeof v.mixed !== 'boolean' || typeof v.dry !== 'boolean') return false;
     for (const field of ['volume', 'mass', 'waterMass', 'temperature', 'delivered']) if (!Number.isFinite(v[field]) || v[field] < 0 || v[field] > 100000) return false;
     if (v.volume > e.capacity + 1e-6) return false;
+    if (v.trial !== undefined && (!Number.isSafeInteger(v.trial) || v.trial < 0)) return false;
     if (!validReactionHistory(v)) return false;
     if (!validMaterials(v)) return false;
     for (const id of Object.keys(SPECIES)) if (!Number.isFinite(v.totals[id]) || v.totals[id] < 0 || v.totals[id] > 100) return false;
     for (const [id, n] of Object.entries(v.indicators)) if (REAGENT[id]?.group !== 'Indicators' || !Number.isFinite(n) || n < 0) return false;
   }
   if (!value.draft || !['objective','hypothesis','procedure','observations','calculations','equations','conclusion','errors'].every(id => typeof value.draft[id] === 'string' && value.draft[id].length <= 10000)) return false;
+  if (Object.keys(value.draft).some(id => !['objective','hypothesis','procedure','observations','calculations','equations','conclusion','errors'].includes(id))) return false;
   if (!Array.isArray(value.log) || value.log.length > 1000 || !value.log.every(r => typeof r.text === 'string' && Number.isFinite(r.time))) return false;
   if (!Array.isArray(value.measurements) || value.measurements.length > 1000 || !value.measurements.every(r => Number.isFinite(r.value) && Number.isFinite(r.time) && Number.isFinite(r.delivered) && EQUIPMENT_BY_ID[r.vessel] && typeof r.kind === 'string')) return false;
   return Array.isArray(value.endpoints) && Array.isArray(value.notes) && value.notes.length <= 100 && value.notes.every(n => typeof n.title === 'string' && n.draft && typeof n.date === 'string' && Array.isArray(n.measurements) && Array.isArray(n.log)) && Array.isArray(value.customStudies) && value.customStudies.length <= 30 && value.customStudies.every(validStudy);

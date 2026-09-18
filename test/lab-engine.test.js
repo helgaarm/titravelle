@@ -102,6 +102,20 @@ test('equation checker handles charge, atoms, coefficients and unknown species w
   assert.equal(checkEquation('H+','H2O').balanced,false);
   assert.throws(()=>checkEquation('window','H2O'));
 });
+
+test('saved state rejects markup in trial counters and unknown draft fields while preserving literal notes and legacy trials',()=>{
+  const s=lab();
+  s.draft.observations='<img src=x onerror=alert(1)>';
+  assert.equal(validateLab(s),true,'Notebook text is allowed and must be escaped at rendering');
+  for(const trial of ['<img src=x onerror=alert(1)>','1',-1,1.5,null,Infinity,NaN]) {
+    const bad=structuredClone(s);bad.vessels.flask.trial=trial;
+    assert.equal(validateLab(bad),false,`Invalid trial: ${trial}`);
+  }
+  const legacy=structuredClone(s);for(const v of Object.values(legacy.vessels))delete v.trial;
+  assert.equal(validateLab(legacy),true);
+  const extra=structuredClone(s);extra.draft['\"><img src=x onerror=alert(1)>']='text';
+  assert.equal(validateLab(extra),false);
+});
 test('calculation tools respect units and CSV protects fields with spreadsheet prefixes',()=>{
   near(calculate('dilution',[0.1,100,1]),10);near(calculate('titration',[0.1,22,25]),0.088);
   near(calculate('precipitate',[0.001,0.002,0]),0.14332);near(calculate('heat',[100,5,20]),2192);
