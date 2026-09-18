@@ -68,6 +68,8 @@ The **Cell & circuit** panel keeps the drawing, wiring, voltage and timer contro
 
 Choose electrodes and cell geometry, record seven predictions, and use constant voltage, constant current or a galvanic load. **Water electrolysis**, **Metal deposition** and **Copper transfer** provide guided starting points; free exploration needs no active experiment. A **New cell trial** resets the cell only; **Restart without experiment** resets all working samples.
 
+The four electrochemistry view buttons stay at the top while you scroll, together with **Start**, **Stop**, **New run** and **Clean desk**. Use Left/Right arrows to move between view buttons, or Home/End to reach the first/last view. Switching these views keeps the run going; measurements and reports show their capture time and have **Refresh this view**. Live controls retain focus and edits. Opening a reset confirmation immediately stops the run; cancelling keeps that stopped sample, and confirming preserves saved notebook entries. A background browser tab pauses the run. Running data saves every two seconds and again when stopped.
+
 **Measurements & calculations** shows competing half reactions, Nernst potentials, polarization and resistance, Faraday mass/gas comparisons, recorded measurements and time-series graphs. **Advanced studies** provides independent polarization/Tafel, Butler–Volmer and finite-inventory cyclic-voltammetry models. Save a notebook snapshot or export CSV, JSON, Markdown and standalone HTML with graphs from **Report**. These use assumed kinetics and synthetic instrument readings; scope, formulas, validation and limitations are documented in [ELECTROCHEMISTRY_MODEL.md](ELECTROCHEMISTRY_MODEL.md).
 
 ## Scientific scope and originality
