@@ -4,7 +4,7 @@ A local virtual chemistry laboratory with a shared chemical shelf and equipment,
 
 ## Run
 
-Requires Node.js 20 or newer. No package installation, accounts, API keys, or backend services are needed.
+Use a supported Node.js LTS release (CI uses Node.js 24). No package installation, accounts, API keys, or backend services are needed.
 
 ```sh
 npm start
@@ -78,7 +78,13 @@ The interface, lesson text, diagrams, and code were authored for this project wi
 
 ## License
 
-All rights reserved. See [LICENSE](LICENSE) for the rights notice and its scope. The project remains private with package metadata `license: "UNLICENSED"`; no general redistribution or open-source license is granted. Scientific facts, equations, user-owned data and third-party rights are outside the project's ownership claim.
+All rights reserved. See [LICENSE](LICENSE) for the rights notice and its scope. The GitHub repository is public; package metadata remains `private: true` to prevent accidental npm publication and `license: "UNLICENSED"`. No general redistribution or open-source license is granted. Scientific facts, equations, user-owned data and third-party rights are outside the project's ownership claim.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for private vulnerability reporting, local data storage, and server boundaries. The default server stays on loopback, restricts the files it serves, and sends browser security headers. Keep the default binding for personal use.
+
+Pull requests run static checks, unit/security tests, and browser regressions in GitHub Actions. Official actions are pinned to commit revisions, use read-only repository permissions, and receive weekly Dependabot update proposals. Changes to `main` go through a pull request with passing required checks.
 
 ## Validation
 
@@ -89,7 +95,7 @@ npm run check:provenance
 npm run test:browser
 ```
 
-The first three commands perform syntax, numerical/state regression, and asset/dependency checks. Browser tests require the running server and a separately installed Chromium-compatible browser (`BROWSER_PATH` can specify its executable). They use an isolated headless profile and cover the five aqueous workflows and the SOI-18 organic workflow, graphing, exports, modes, notebook preservation, equation prediction, and application navigation. Screenshots and results are written under ignored `artifacts/`. The tests check 320px/390px layouts and require no application requests to third-party origins.
+The first three commands perform syntax, numerical/state and HTTP security regression, and asset/dependency checks. Browser tests require the running server and a separately installed Chromium-compatible browser (`BROWSER_PATH` can specify its executable). They use an isolated headless profile and cover aqueous, organic, and electrochemistry workflows, graphing, exports, modes, notebook preservation, equation prediction, and application navigation. Screenshots and results are written under ignored `artifacts/`. The tests check 320px/390px layouts and require no application requests to third-party origins.
 
 ## Modules
 

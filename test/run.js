@@ -7,3 +7,4 @@ import './lab-workspace.test.js';
 import './lab-materials.test.js';
 import './organic-guide.test.js';
 import './electro.test.js';
+import './server.test.js';

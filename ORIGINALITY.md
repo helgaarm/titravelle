@@ -40,7 +40,7 @@ These provenance statements do not establish copyright ownership, copyrightabili
 
 ## Review limits and references
 
-The full commercial manual, every existing chemistry simulator, and trademark, patent, or registered-design databases were not exhaustively compared. No formal register clearance was performed. A future public release needs its own licensing and clearance decisions; repository checks cannot certify those decisions.
+The full commercial manual, every existing chemistry simulator, and trademark, patent, or registered-design databases were not exhaustively compared. No formal register clearance was performed. Public repository visibility does not change the rights-reserved licensing decision or establish legal clearance; repository checks cannot certify those decisions.
 
 - [Existing Element Lab chemistry app listing](https://apps.apple.com/us/app/element-lab-periodic-table/id6752604178): reason for replacing the earlier name.
 - [U.S. Copyright Office, Circular 33](https://www.copyright.gov/circs/circ33.pdf): source consulted on expression and underlying ideas or methods.
