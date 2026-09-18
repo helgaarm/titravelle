@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+export async function checkWorkspace({base,connection,evaluate,click,fill,text,waitFor,screenshot}) {
+  const key='titravelle-science-lab-v2',state=()=>evaluate(`JSON.parse(localStorage.getItem('${key}'))`);
+  const change=(selector,value)=>evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});el.value=${JSON.stringify(value)};el.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  const tab=t=>click(`[data-lab="organic-tab"][data-tab="${t}"]`),act=a=>click(`[data-organic="${a}"]`);
+  await connection('Page.navigate',{url:base});await waitFor('.sl-reagent');
+  await evaluate(`localStorage.removeItem('${key}')`);await connection('Page.reload');await waitFor('.sl-reagent');
+  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),63);
+  assert.equal(await evaluate('document.querySelectorAll(".sl-workspace nav button").length'),8);
+  await click('[data-lab="reagent"][data-reagent="copper"]');await click('[data-lab="add"]');await click('[data-lab="measure"][data-kind="mass"]');
+  await fill('#sl-draft-conclusion','Keep both samples.');const aqueous=await state();
+  await fill('#sl-shelf-search','methoxide');await click('[data-lab="organic-reagent"][data-reagent="methoxide"]');
+  assert.equal((await state()).study,'indicators');assert.equal((await state()).station,'aqueous');
+  assert.equal((await state()).organic,undefined,'Selecting a material does not open or charge the reactor');assert.match(await text('.sl-shelf-selected'),/Corrosive/);
+  assert.equal(await evaluate('document.querySelectorAll("#sl-ventilation-toggle").length'),1);
+  await tab('prepare');await act('dry-lots');await act('kf-lots');await act('feed-gc');await act('standard-apparatus');
+  await tab('reaction');await act('charge-fame');await click('#sl-ventilation-toggle');
+  const org=(await state()).organic;assert.ok(org.charged.fame);
+  await tab('report');await act('snapshot');assert.equal((await state()).notes.at(-1).title,'Organic investigation');
+  await change('#sl-equipment','ph');assert.equal((await state()).station,'aqueous');
+  assert.deepEqual((await state()).vessels,aqueous.vessels);assert.deepEqual((await state()).measurements,aqueous.measurements);
+  assert.equal((await state()).draft.conclusion,'Keep both samples.');assert.equal((await state()).ventilationOn,true);
+  assert.match(await text('.sl-hazard-list'),/Organic reactor/);
+  await click('[data-lab="shelf-clear"]');await change('#sl-shelf-scope','organic');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),24);
+  await change('#sl-shelf-group','Catalysts');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),1);
+  await click('[data-lab="shelf-clear"]');await fill('#sl-shelf-search','H2O');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),3);
+  await click('[data-lab="organic-reagent"][data-reagent="water"]');assert.match(await text('.sl-shelf-selected'),/moisture/);assert.equal((await state()).station,'aqueous');
+  await click('[data-lab="reagent"][data-reagent="water"]');assert.match(await text('.sl-shelf-selected'),/Distilled/);assert.equal((await state()).station,'aqueous');
+  assert.deepEqual((await state()).organic,org);
+  await click('[data-lab="shelf-clear"]');await screenshot('shared-laboratory-desktop.png');
+  await change('#sl-equipment','product-qc');assert.equal((await state()).station,'analysis');
+  await connection('Page.reload');await waitFor('.og-content');assert.equal((await state()).station,'analysis');assert.deepEqual((await state()).organic,org);
+  await click('[data-lab="new-run"]');assert.match(await text('#modal'),/aqueous vessels, organic reactor/);await click('[data-lab="cancel-new"]');assert.deepEqual((await state()).organic,org);
+  for(const width of [390,320]){await connection('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:true});assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,`Shared equipment fits ${width}px`);}
+  await screenshot('shared-equipment-mobile.png','.sl-workspace');await screenshot('shared-shelf-mobile.png','.sl-inventory');
+  await connection('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
+  await tab('prepare');await act('apparatus');await click('[data-lab="undo"]');assert.deepEqual((await state()).organic,org);
+  await click('[data-lab="page"][data-page="studies"]');await click('[data-lab="study"][data-study="soi18"]');await click('[data-lab="confirm-new"]');
+  assert.equal((await state()).vessels.beaker.volume,0);assert.equal((await state()).organic.inputMass,0);assert.equal((await state()).notes.length,1);
+  await click('[data-lab="undo"]');assert.deepEqual((await state()).vessels,aqueous.vessels);assert.deepEqual((await state()).organic,org);
+  // Leave a running SOI investigation through both restart entry points.
+  await click('[data-lab="page"][data-page="studies"]');await click('[data-lab="study"][data-study="soi18"]');await click('[data-lab="confirm-new"]');
+  await act('dry-lots');await act('kf-lots');await act('feed-gc');await act('standard-apparatus');await tab('reaction');await act('charge-fame');
+  await click('[data-lab="aqueous-station"]');await click('[data-lab="reagent"][data-reagent="salt"]');await click('[data-lab="add"]');await click('[data-lab="measure"][data-kind="mass"]');
+  await fill('#sl-draft-conclusion','Unfinished SOI investigation');await tab('reaction');const active=await state();
+  assert.ok(active.organic.inputMass>0);assert.ok(active.vessels.beaker.volume>0);assert.ok(await evaluate('Boolean(document.querySelector(".og-guide"))'));
+  await click('[data-lab="restart-free"]');assert.match(await text('#modal'),/free exploration with no experiment selected/);await click('[data-lab="cancel-new"]');assert.deepEqual(await state(),active);
+  await click('[data-lab="new-run"]');await click('[data-lab="confirm-free"]');
+  assert.equal((await state()).study,null);assert.equal((await state()).mode,'free');assert.equal((await state()).organic,undefined);
+  assert.equal((await state()).vessels.beaker.volume,0);assert.deepEqual((await state()).measurements,[]);assert.equal((await state()).draft.conclusion,'');
+  assert.deepEqual((await state()).notes,active.notes);assert.equal((await state()).ventilationOn,true);
+  await click('[data-lab="undo"]');assert.deepEqual((await state()).organic,active.organic);assert.deepEqual((await state()).vessels,active.vessels);
+  assert.equal((await state()).study,'soi18');assert.equal((await state()).draft.conclusion,active.draft.conclusion);assert.ok(await evaluate('Boolean(document.querySelector(".og-guide"))'));
+  await click('[data-lab="restart-free"]');await click('[data-lab="confirm-new"]');await connection('Page.reload');await waitFor('.sl-reagent');
+  assert.equal((await state()).study,null);assert.equal((await state()).station,'aqueous');assert.equal((await state()).mode,'free');
+  assert.match(await text('.sl-heading'),/No experiment selected/);assert.equal(await evaluate('document.querySelectorAll(".sl-guide,.og-guide").length'),0);
+  assert.equal((await state()).draft.objective,'');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),63);
+  await change('#sl-mode','guided');assert.equal(await evaluate('document.querySelectorAll(".sl-guide,.og-guide").length'),0,'Changing learning mode must not select an experiment');
+  assert.doesNotMatch(await text('.science-lab'),/Discussion · compare/);
+  await click('[data-lab="snapshot"]');assert.equal((await state()).notes.at(-1).title,'Free exploration');
+  await screenshot('free-laboratory-desktop.png','.sl-heading');
+  for(const width of [390,320]){
+    await connection('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:true});
+    assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,`Free restart fits ${width}px`);
+    await click('[data-lab="restart-free"]');assert.equal(await evaluate('document.querySelector("#modal").scrollWidth<=document.querySelector("#modal").clientWidth'),true);
+    if(width===320)await screenshot('restart-free-mobile.png','#modal');await click('[data-lab="cancel-new"]');
+  }
+  await connection('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
+  await tab('reaction');assert.equal((await state()).study,null);assert.equal((await state()).organic.inputMass,0);assert.equal(await evaluate('document.querySelectorAll(".og-guide").length'),0);
+  await click('[data-lab="page"][data-page="studies"]');await click('[data-lab="study"][data-study="titration"]');await click('[data-lab="confirm-new"]');
+  assert.equal((await state()).study,'titration');assert.equal((await state()).mode,'guided');assert.ok(await evaluate('Boolean(document.querySelector(".sl-guide"))'));
+  await evaluate(`localStorage.removeItem('${key}')`);await connection('Page.reload');await waitFor('.sl-reagent');
+  console.log('PASS: shared tools and inventory, restart without experiment during SOI, cancellation, reset/undo, notebook preservation, free-mode reload and snapshots, guide removal/restart, and mobile layout');
+}

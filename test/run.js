@@ -1,0 +1,9 @@
+import './lab-engine.test.js';
+import './lab-reactions.test.js';
+import './lab-copper.test.js';
+import './lab-safety.test.js';
+import './organic.test.js';
+import './lab-workspace.test.js';
+import './lab-materials.test.js';
+import './organic-guide.test.js';
+import './electro.test.js';

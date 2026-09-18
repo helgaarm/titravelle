@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f1f3f2" />
+    <meta name="description" content="Titravelle is a virtual workspace for small chemistry studies. Predict, add, observe, and compare your explanation with the evidence." />
+    <title>Titravelle · Chemistry studies</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='10' fill='%23254b56'/%3E%3Cpath d='M8 10h25M20 10v13m-7-8h14' fill='none' stroke='%23f5f2e7' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M20 22c-2 4-7 8-7 12a7 7 0 0 0 14 0c0-4-5-8-7-12Z' fill='%23f5f2e7'/%3E%3Ccircle cx='34' cy='24' r='2.2' fill='%23d7b779'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/lab.css" />
+    <link rel="stylesheet" href="/src/organic.css" />
+    <link rel="stylesheet" href="/src/electro.css" />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to lab</a>
+    <div id="app"></div>
+    <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+    <div id="toast" class="toast" role="status"></div>
+    <dialog id="modal" aria-labelledby="dialog-title"></dialog>
+    <noscript>This chemistry set needs JavaScript enabled to run the simulation.</noscript>
+  </body>
+</html>
