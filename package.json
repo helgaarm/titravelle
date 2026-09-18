@@ -21,6 +21,7 @@
     "src/",
     "server.mjs",
     "README.md",
+    "LICENSE",
     "ORIGINALITY.md",
     "THIRD_PARTY_NOTICES.md",
     "SCIENTIFIC_MODEL.md",

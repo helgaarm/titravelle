@@ -74,7 +74,11 @@ Choose electrodes and cell geometry, record seven predictions, and use constant 
 
 [SCIENTIFIC_MODEL.md](SCIENTIFIC_MODEL.md) documents equations, numerical constants, error models, assumptions, numerical checks, and unimplemented modules. The copper model covers chloride/sulfate complexes, hydrolysis, and Cu(OH)₂, but withholds predictions for competing copper mixtures with acetate, carbonate, or silver. Wet copper filtration and weighing are supported; copper-residue drying is not. Unsupported silver combinations also withhold predictions. This is not a universal reaction solver. Activity corrections, full kinetics, redox/electrochemistry, alternative copper minerals, distillation, extraction, spectroscopy, and broader unknown-analysis modules remain future work.
 
-The interface, lesson text, diagrams, and code were authored for this project with AI assistance. No commercial kit pages, illustrations, manuals, or branded layouts are bundled. See [ORIGINALITY.md](ORIGINALITY.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance and review limits. Asset checks do not establish legal clearance. The project remains private and `UNLICENSED`; no distribution license has been chosen on the owner's behalf.
+The interface, lesson text, diagrams, and code were authored for this project with AI assistance. No commercial kit pages, illustrations, manuals, or branded layouts are bundled. See [ORIGINALITY.md](ORIGINALITY.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance and review limits. Asset checks do not establish legal clearance.
+
+## License
+
+All rights reserved. See [LICENSE](LICENSE) for the rights notice and its scope. The project remains private with package metadata `license: "UNLICENSED"`; no general redistribution or open-source license is granted. Scientific facts, equations, user-owned data and third-party rights are outside the project's ownership claim.
 
 ## Validation
 

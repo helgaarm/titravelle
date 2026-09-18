@@ -18,7 +18,7 @@ This is an implementation review, not a legal opinion, trademark registration se
 | Runtime packages | There are no npm runtime dependencies or vendored runtime libraries. The server uses Node.js built-ins; Node.js and the browser are independently installed software. |
 | Scientific sources | Outbound reference links support factual content. Their page layouts, photographs, charts, logos, and extended prose are not embedded. See THIRD_PARTY_NOTICES.md and SCIENTIFIC_MODEL.md. |
 | User data | Current laboratory notes persist in the existing `titravelle-science-lab-v2` collection. Removing retired application features does not erase browser storage. |
-| Distribution scope | Package metadata lists application files explicitly. Browser profiles, caches, screenshots, downloaded test notebooks, development scripts, and `artifacts/` are excluded. The package remains private and `UNLICENSED`; no distribution license has been selected. |
+| Distribution scope | Package metadata lists application files explicitly, including the LICENSE rights notice. Browser profiles, caches, screenshots, downloaded test notebooks, development scripts, and `artifacts/` are excluded. The package remains private and `UNLICENSED`; LICENSE grants no general distribution or open-source rights. |
 
 ## Authorship and source map
 
