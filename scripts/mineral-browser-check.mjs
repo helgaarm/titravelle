@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 export async function checkMinerals({base,connection,evaluate,click,fill,text,waitFor,screenshot}){
   const state=()=>evaluate('JSON.parse(localStorage.getItem("titravelle-science-lab-v2"))');
-  const check=async selector=>evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});el.checked=true;el.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  const check=async selector=>{
+    const {result}=await connection('Runtime.evaluate',{expression:'document'});
+    try{
+      const reply=await connection('Runtime.callFunctionOn',{objectId:result.objectId,functionDeclaration:'function(selector){const el=this.querySelector(selector);if(!el)throw Error("Missing checkbox");el.checked=true;el.dispatchEvent(new Event("change",{bubbles:true}));}',arguments:[{value:selector}]});
+      if(reply.exceptionDetails)throw Error('Could not check the requested control.');
+    }finally{await connection('Runtime.releaseObject',{objectId:result.objectId});}
+  };
   const record=async message=>{await fill('#mn-observe-interpretation',message);await check('#mn-record-form [name=reviewed]');await click('[data-mineral=record]');};
   await connection('Page.navigate',{url:base});await waitFor('.sl-reagent');
   await click('[data-lab=page][data-page=studies]');
