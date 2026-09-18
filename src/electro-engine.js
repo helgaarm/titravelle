@@ -1,6 +1,12 @@
 import { EC, IONS, ELECTRODE, ELECTROLYTES, STANDARD_WIRES, TERMINALS, PREDICTIONS } from './electro-data.js';
 import { emptyIons, metalMass, electroPreview, compartments, gasVolume, clamp, pressureBar } from './electro-model.js';
 const copy=x=>structuredClone(x);
+// Recorded rows and log entries are append-only. Copy their containers, not the
+// entire archive, when creating the next transactional state.
+function workingCopy(original) {
+  const {records,operations,...current}=original;
+  return {...copy(current),records:records.slice(),operations:operations.slice()};
+}
 const bound=(v,min,max,label)=>{if(!Number.isFinite(v)||v<min||v>max)throw Error(`${label}: enter ${min}–${max}.`);return v;};
 const freshElectrode=material=>({material,initialMass:5,baseRemaining:5,deposits:{},lost:{}});
 export function createElectro(seed=38) {
@@ -88,7 +94,7 @@ export function recordElectro(e,ideal=false){
   e.records.push(row);if(e.records.length>7200)e.records.shift();return row;
 }
 export function operateElectro(original,action,args={},context={}) {
-  const e=copy(original);let message='Electrochemistry settings recorded.';
+  const e=workingCopy(original);let message='Electrochemistry settings recorded.';
   if(action==='supply'){
     const ranges={voltage:[0,30],current:[0,5],limit:[0,5],load:[.1,10000],sampleInterval:[1,60]};
     for(const key of Object.keys(args))if(key!=='mode'&&!(key in ranges))throw Error('Only electrical supply settings can be changed during a run.');
@@ -135,15 +141,20 @@ export function operateElectro(original,action,args={},context={}) {
     if(args.enabled&&PREDICTIONS.some(([id])=>!e.predictions[id]))throw Error('Record your predictions first, or explicitly mark them as uncertain.');
     if(args.enabled&&!e.volume)throw Error('Fill the electrolysis cell before applying power.');
     if(args.enabled&&(pressureBar(e)>=2||e.temperature>=80))throw Error('Resolve the pressure or temperature protection condition before re-enabling output.');
+    if(!args.enabled&&e.power&&e.records.at(-1)?.time!==e.time)recordElectro(e,context.ideal);
     e.power=args.enabled;e.stopReason='';if(e.power&&!e.records.length)recordElectro(e,context.ideal);message=`Cell output ${e.power?'ON':'OFF'}. ${electroPreview(e).wiring.status}.`;
   }else if(action==='advance'){
     const seconds=bound(args.seconds,1,3600,'Advance duration (s)');if(!Number.isInteger(seconds))throw Error('Use whole seconds.');if(!e.volume)throw Error('Fill the cell first.');
     if(!e.records.length)recordElectro(e,context.ideal);
-    for(let i=0;i<seconds;i++){const p=electroPreview(e);tick(e,p,1);if(e.time%e.config.sampleInterval===0||i===seconds-1||e.stopReason)recordElectro(e,context.ideal);if(e.stopReason)break;}
+    for(let i=0;i<seconds;i++){const p=electroPreview(e);tick(e,p,1);if(e.time%e.config.sampleInterval===0||(!context.continuous&&i===seconds-1)||e.stopReason)recordElectro(e,context.ideal);if(e.stopReason)break;}
     message=`Cell time ${e.time} s; integrated charge ${e.charge.toFixed(4)} C. ${e.stopReason||''}`;
   }else if(action==='measure'){if(!e.volume)throw Error('Fill the cell before measuring.');recordElectro(e,context.ideal);message='Instrument readings stored; reopening the view does not resample them.';
   }else throw Error('Unsupported electrochemistry operation.');
-  e.operations.push({time:e.time,action,args:copy(args),ventilationOn:context.ventilationOn===true,message});e.operations=e.operations.slice(-500);return {state:e,message};
+  const continuous=action==='advance'&&context.continuous===true,last=e.operations.at(-1);
+  const entry={time:e.time,action,args:copy(args),ventilationOn:context.ventilationOn===true,message,...(continuous?{continuous:true}:{})};
+  if(continuous&&last?.continuous&&last.time===original.time&&last.ventilationOn===entry.ventilationOn){entry.args.seconds+=last.args.seconds;e.operations[e.operations.length-1]=entry;}
+  else e.operations.push(entry);
+  e.operations=e.operations.slice(-500);return {state:e,message};
 }
 export function validElectro(e){
   try{

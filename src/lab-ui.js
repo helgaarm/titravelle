@@ -14,7 +14,8 @@ import { organicView, organicPrecautions, organicFormArgs, organicPrintable } fr
 import { organicGuide, organicGuideView } from './organic-guide.js';
 import { createElectro, operateElectro, importVessel } from './electro-engine.js';
 import { advancedElectro, electroReport, electroCSV } from './electro-analysis.js';
-import { electroView, electroFormArgs, electroPrintable } from './electro-ui.js';
+import { electroView, electroFormArgs, electroPrintable, updateElectroLive } from './electro-ui.js';
+import { createElectroRunner } from './electro-runner.js';
 import { PREDICTIONS } from './electro-data.js';
 
 export const LAB_KEY = 'titravelle-science-lab-v2';
@@ -34,19 +35,20 @@ export function startLab() {
   let undo = [], toastTimer, activeTransfer=null, stopTransfer=null;
   let equationsVisible = false;
   let guidePreview = null;
-  let electroPanel='cell',electroTimer=null,electroSpeed=60,electroTerminal=null,electroSupplyDraft=null,electroPredictionDraft=null,electroDragging=false;
-  const stopElectroTimer=()=>{if(electroTimer!==null){clearInterval(electroTimer);electroTimer=null;}};
+  let electroPanel='cell',electroTimer=null,electroSpeed=60,electroTerminal=null,electroSupplyDraft=null,electroPredictionDraft=null;
+  let lastElectroSave=0;
+  const stopElectroTimer=()=>{if(electroTimer!==null){electroTimer.stop();electroTimer=null;}if(state.electro?.power)state.electro=operateElectro(state.electro,'power',{enabled:false},{ideal:state.ideal,ventilationOn:state.ventilationOn===true}).state;};
   let shelfQuery='', shelfGroup='all', shelfScope='all';
   let selectedCatalog=LAB_MATERIALS.some(r=>r.catalogId===state.shelfSelection)?state.shelfSelection:(stationOf(state)==='aqueous'?'aqueous:hcl':'organic:fame');
   if(selectedCatalog.startsWith('aqueous:'))reagent=selectedCatalog.split(':')[1];
   let materialMass=1,materialVolume=1,materialForm=defaultForm(selectedCatalog.split(':')[1]),transferMass=1;
   const selectedStock=()=>LAB_MATERIALS.find(r=>r.catalogId===selectedCatalog);
   const weighedSelection=()=>selectedStock()?.scope!=='aqueous';
-  const save = () => { try { state.shelfSelection=selectedCatalog;localStorage.setItem(LAB_KEY, JSON.stringify(state)); storageOK = true; } catch { storageOK = false; } };
+  const save = () => { try { state.shelfSelection=selectedCatalog;localStorage.setItem(LAB_KEY, JSON.stringify(state)); storageOK = true; } catch { storageOK = false; } const status=document.getElementById('sl-save-status');if(status)status.textContent=storageOK?'Saved on this device':'Storage unavailable — export your notebook'; };
   const notify = message => { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('visible'), 6500); document.querySelector('#announcer').textContent = message; };
   const allStudies = () => [...STUDIES, ...state.customStudies];
   const study = () => allStudies().find(e => e.id === state.study) || FREE_LAB;
-  const remember = () => { undo.push(structuredClone(state)); if (undo.length > 20) undo.shift(); };
+  const remember = () => { undo.push(structuredClone({...state,notes:[]})); if (undo.length > 20) undo.shift(); };
   function draw() {
     const focused = document.activeElement?.id, cursor = document.activeElement?.selectionStart;
     const openDetails = new Map([...document.querySelectorAll('.science-lab details')].map(d=>[d.querySelector('summary')?.textContent,d.open]));
@@ -56,7 +58,7 @@ export function startLab() {
     for (const d of document.querySelectorAll('.science-lab details')) { const key=d.querySelector('summary')?.textContent; if(openDetails.has(key))d.open=openDetails.get(key); }
     const concentrationControl=document.getElementById('sl-concentration');
     const speedControl=document.getElementById('el-speed');if(speedControl)speedControl.value=String(electroSpeed);
-    if(electroTimer!==null)for(const control of document.querySelectorAll('.el-form input,.el-form select,.el-form textarea,[data-electro]'))if(control.dataset.electro!=='pause'&&!control.closest('#el-supply-form'))control.disabled=true;
+    if(electroTimer!==null)for(const control of document.querySelectorAll('.el-form input,.el-form select,.el-form textarea,[data-electro]'))if(!['pause','new-cell','refresh-view','snapshot','export-csv','export-report','export-html','export-json'].includes(control.dataset.electro)&&!control.closest('#el-supply-form'))control.disabled=true;
     if(concentrationControl)concentrationControl.disabled=['water','unknown'].includes(reagent)||REAGENT[reagent].group==='Indicators';
     if(activeTransfer){
       for(const control of document.querySelectorAll('.science-lab button,.science-lab input,.science-lab select'))if(control.dataset.lab!=='finish-transfer')control.disabled=true;
@@ -218,6 +220,7 @@ export function startLab() {
   }
   function askNew(id) {
     stopElectroTimer();
+    save();draw();
     pendingStudy = id;
     const dialog = document.querySelector('#modal');
     dialog.innerHTML = `<h2 id="dialog-title">${id === null ? 'Restart without an experiment?' : 'Prepare a fresh bench?'}</h2><p>This resets the aqueous vessels, organic reactor, electrochemistry cell, readings and working draft. Saved snapshots and the ventilation setting are kept. To keep your samples, cancel and switch equipment on the Workbench.</p>${id === null ? '<p>You will return to free exploration with no experiment selected. The shared shelf and all equipment remain available.</p>' : `<p>Continue with <strong>${esc(allStudies().find(s=>s.id===id)?.title)}</strong>, or restart without an experiment.</p>`}<div class="sl-row">${button('cancel-new','Keep current run')}${id === null ? '' : button('confirm-free','Restart without experiment')}${button('confirm-new',id === null ? 'Restart without experiment' : 'Prepare fresh bench','',true)}</div>`;
@@ -235,9 +238,37 @@ export function startLab() {
     document.querySelector('#main')?.focus({preventScroll:true});window.scrollTo({top:0});
     if(state.study===null)notify('Fresh lab ready. No experiment selected; saved notebook entries are kept.');
   }
-  document.addEventListener('pointerdown',event=>{if(event.target.id==='el-voltage-range')electroDragging=true;});
-  document.addEventListener('pointerup',()=>{electroDragging=false;});
-  document.addEventListener('pointercancel',()=>{electroDragging=false;});
+  function switchElectroPanel(panel){
+    if(!['cell','results','advanced','report'].includes(panel))return;
+    electroPanel=panel;draw();
+    document.getElementById(`el-tab-${panel}`)?.focus({preventScroll:true});
+    document.getElementById('el-workspace-nav')?.scrollIntoView({block:'start',behavior:'instant'});
+  }
+  document.addEventListener('keydown',event=>{
+    const tab=event.target.closest('[role="tab"][data-panel]');if(!tab)return;
+    const panels=['cell','results','advanced','report'],index=panels.indexOf(tab.dataset.panel);
+    const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;
+    if(next!==null){event.preventDefault();switchElectroPanel(panels[next]);}
+  });
+  function startElectroTimer(){
+    lastElectroSave=performance.now();
+    electroTimer=createElectroRunner({
+      speed:()=>electroSpeed*4,
+      step:()=>{state.electro=operateElectro(state.electro,'advance',{seconds:1},{ideal:state.ideal,ventilationOn:state.ventilationOn===true,continuous:true}).state;return state.electro.power;},
+      update:running=>{
+        if(!running){electroTimer=null;save();draw();notify(state.electro.stopReason||'Cell stopped.');return;}
+        updateElectroLive(state.electro);
+        const safety=document.createElement('template');safety.innerHTML=safetyPanel();
+        for(const selector of ['.sl-safety-overview','.sl-safety-cards']){
+          const current=document.querySelector(selector),next=safety.content.querySelector(selector);
+          if(current&&next&&current.innerHTML!==next.innerHTML)current.replaceChildren(...next.childNodes);
+        }
+        if(performance.now()-lastElectroSave>=2000){save();lastElectroSave=performance.now();}
+      },
+      onError:error=>{stopElectroTimer();save();draw();notify(error.message);},
+    });
+    electroTimer.start();
+  }
   function captureSupplyDraft(el) {
     if(!el.closest('#el-supply-form'))return;
     if(el.id==='el-voltage-range')document.getElementById('el-supply-voltage').value=el.value;
@@ -297,6 +328,7 @@ export function startLab() {
     if(electroControl&&!electroControl.disabled&&!activeTransfer&&stationOf(state)==='electro'){
       try{
           const action=electroControl.dataset.electro,context={ideal:state.ideal,ventilationOn:state.ventilationOn===true};
+          if(action==='refresh-view'){draw();document.getElementById(`el-tab-${electroPanel}`)?.focus({preventScroll:true});return;}
           if(action==='terminal'){
             if(state.electro.power)throw Error('Stop the output before changing wires.');
             const terminal=electroControl.dataset.terminal;
@@ -315,16 +347,20 @@ export function startLab() {
             draft:{objective:study().preset?study().objective:'Explore electrode reactions, charge and material balances.',conclusion:'See the attached report and predictions. Instrument results are synthetic.'},log:state.electro.operations.map(r=>({time:r.time,text:r.message})),measurements:[],electro:structuredClone(state.electro),electroReport:electroReport(state.electro,context.ventilationOn),safety:benchSafety(state)});save();draw();notify('Electrochemistry run saved in the shared lab notebook.');return;
         }
         if(action==='new-cell'){
-          stopElectroTimer();const dialog=document.querySelector('#modal');dialog.innerHTML=`<h2 id="dialog-title">Start a new cell trial?</h2><p>This clears only the electrochemistry cell, measurements and predictions. Bench vessels, the organic reactor and saved notebook entries are kept.</p><div class="sl-row">${button('cancel-new','Keep cell')}${button('confirm-electro-cell','Prepare empty cell','',true)}</div>`;dialog.showModal();return;
+          stopElectroTimer();save();draw();const dialog=document.querySelector('#modal');dialog.innerHTML=`<h2 id="dialog-title">Start a new cell trial?</h2><p>This clears only the electrochemistry cell, measurements and predictions. Bench vessels, the organic reactor and saved notebook entries are kept.</p><div class="sl-row">${button('cancel-new','Keep cell')}${button('confirm-electro-cell','Prepare empty cell','',true)}</div>`;dialog.showModal();return;
         }
           if(action==='run'||action==='run-uncertain'){
             if(electroTimer!==null)return;
+            if(!document.getElementById('el-predictions')&&PREDICTIONS.some(([id])=>!String(electroPredictionDraft?.[id]??state.electro.predictions[id]).trim()))switchElectroPanel('cell');
             const predicted=prepareElectroPredictions(action==='run-uncertain',context);if(!predicted)return;
-            const configured=operateElectro(predicted,'supply',electroFormArgs(electroControl),context).state;
-            const result=operateElectro(configured,'power',{enabled:true},context);remember();state.electro=result.state;electroSupplyDraft=null;electroPredictionDraft=null;electroTerminal=null;document.getElementById('el-prediction-details').open=false;
-          electroTimer=setInterval(()=>{try{const next=operateElectro(state.electro,'advance',{seconds:electroSpeed},{ideal:state.ideal,ventilationOn:state.ventilationOn===true});state.electro=next.state;if(!state.electro.power)stopElectroTimer();save();if(!electroDragging||!state.electro.power)draw();}catch(error){stopElectroTimer();draw();notify(error.message);}},250);save();draw();return;
+            const supplyForm=document.getElementById('el-supply-form');
+            const args=supplyForm?electroFormArgs({form:supplyForm}):Object.fromEntries(Object.entries(electroSupplyDraft||{}).map(([key,value])=>[key,key==='mode'?value:Number(value)]));
+            const configured=operateElectro(predicted,'supply',args,context).state;
+            const result=operateElectro(configured,'power',{enabled:true},context);remember();state.electro=result.state;electroSupplyDraft=null;electroPredictionDraft=null;electroTerminal=null;
+            const details=document.getElementById('el-prediction-details');if(details)details.open=false;
+            startElectroTimer();save();draw();document.getElementById(electroControl.id==='el-quick-start'?'el-quick-stop':'el-stop')?.focus({preventScroll:true});return;
         }
-        if(action==='pause'){stopElectroTimer();state.electro=operateElectro(state.electro,'power',{enabled:false},context).state;save();draw();return;}
+        if(action==='pause'){stopElectroTimer();save();draw();document.getElementById(electroControl.id==='el-quick-stop'?'el-quick-start':'el-start')?.focus({preventScroll:true});return;}
         if(electroTimer!==null)throw Error('Pause the accelerated timer before changing the cell or taking a manual step.');
         if(action==='advanced'){const result=advancedElectro(state.electro,electroFormArgs(electroControl));remember();state.electro.advanced=result;save();draw();notify('Independent model study recorded; the workbench cell was not consumed.');return;}
         if(action==='import-vessel'){const args=electroFormArgs(electroControl),result=importVessel(state.electro,state.vessels[args.vessel],args.ml);remember();state.electro=result.state;state.vessels[args.vessel]=result.vessel;save();draw();notify(result.message);return;}
@@ -354,7 +390,7 @@ export function startLab() {
     const action = el.dataset.lab;
     try {
       if(action==='finish-transfer'){finishTransfer();notify('Transfer complete.');document.querySelector('[data-lab="transfer"]')?.focus({preventScroll:true});return;}
-      if(action==='page'){stopElectroTimer();finishTransfer(false);page=el.dataset.page;draw();window.scrollTo({top:0});return;}
+      if(action==='page'){stopElectroTimer();save();finishTransfer(false);page=el.dataset.page;draw();window.scrollTo({top:0});return;}
       if(activeTransfer)return;
       if(action==='guide-review'||action==='guide-current'){
         guidePreview=action==='guide-current'?null:el.dataset.step;draw();
@@ -374,7 +410,7 @@ export function startLab() {
       }
       if(action==='shelf-clear'){shelfQuery='';shelfGroup='all';shelfScope='all';draw();document.getElementById('sl-shelf-search')?.focus();return;}
       if(action==='organic-tab'||action==='aqueous-station'){stopElectroTimer();state=openStation(state,action==='aqueous-station'?'aqueous':el.dataset.tab);save();draw();return;}
-      if(action==='electro-panel'){electroPanel=el.dataset.panel;draw();return;}
+      if(action==='electro-panel'){switchElectroPanel(el.dataset.panel);return;}
       if(action==='confirm-electro-cell'){document.querySelector('#modal').close();remember();state.electro=createElectro(state.seed);electroPanel='cell';electroTerminal=null;electroSupplyDraft=null;electroPredictionDraft=null;save();draw();notify('Empty cell ready. Other workbench samples are unchanged.');return;}
       if(action==='note-electro'){const note=state.notes[Number(el.dataset.index)];download('electrochemistry-notebook-report.md',note.electroReport,'text/markdown;charset=utf-8');return;}
       if(action==='organic-reagent'||action==='material-reagent'){const material=LAB_MATERIALS.find(r=>r.scope!=='aqueous'&&r.id===el.dataset.reagent);if(!material)return;selectedCatalog=material.catalogId;materialForm=defaultForm(material.id);save();draw();return;}
@@ -435,7 +471,8 @@ export function startLab() {
   state=openStation(state,stationOf(state));
   save();
   document.addEventListener('submit',event=>{if(event.target.matches('.og-form,.el-form'))event.preventDefault();});
-  window.addEventListener('pagehide',stopElectroTimer);
+  window.addEventListener('pagehide',()=>{if(electroTimer!==null){stopElectroTimer();save();}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&electroTimer!==null){stopElectroTimer();save();draw();notify('Run paused while the lab is in the background.');}});
   draw();
   if(recovered)notify('The saved bench could not be read. A fresh bench is open.');
 }

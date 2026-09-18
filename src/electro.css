@@ -7,6 +7,20 @@
 .el-electron-key{color:#1d6484}.el-current-key{color:#984b21}.el-temperature{font-size:12px;text-align:center;margin:8px 0}.el-flow .el-electrons{animation:el-electrons 1s linear infinite}@keyframes el-electrons{to{stroke-dashoffset:var(--electron-end)}}@media(prefers-reduced-motion:reduce){.el-flow .el-electrons{animation:none}}
 
 /* Keep the apparatus and its operating controls together. */
+.el-workspace-nav{position:sticky;top:0;z-index:12;background:#f1f3f2;border:1px solid #cad8d0;border-radius:9px;padding:10px 12px;margin-bottom:16px;box-shadow:0 5px 12px #254b5610;scroll-margin-top:0}
+.el-workspace-nav .og-tabs{margin:0;display:flex;gap:8px;flex-wrap:wrap}
+.el-view-tabs .sl-button{min-height:42px}
+.el-quick-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #d9e1dc;margin-top:9px;padding-top:9px}
+.el-quick-status{display:flex;align-items:center;gap:12px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.el-quick-actions{display:flex;gap:8px;flex-wrap:wrap}
+.el-quick-actions .sl-button{min-width:75px;min-height:40px}
+#el-quick-start{background:#285d60;color:#fff;border-color:#285d60}
+#el-quick-stop:not(:disabled){background:#fff3e9;border-color:#c98d6b;color:#8a452c}
+.el-view-update{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;color:#526a61;padding:0 2px 14px}
+#el-view{scroll-margin-top:145px}
+.el-layout .sl-inventory{top:140px;max-height:calc(100vh - 156px)}
+@media(max-width:760px){.el-workspace-nav{padding:8px}.el-workspace-nav .og-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.el-view-tabs .sl-button{font-size:11px;padding:7px 8px;min-height:39px}.el-quick-controls{flex-direction:column;align-items:stretch;gap:7px}.el-quick-status{justify-content:space-between;gap:5px;font-size:10px}.el-quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.el-quick-actions .sl-button{min-width:0;padding:6px 4px;font-size:11px}.el-view-update{align-items:start}.el-view-update .sl-button{flex-shrink:0}.el-layout .sl-inventory{position:static;max-height:none}}
+@media(max-width:760px){#el-view{scroll-margin-top:220px}.el-view-update + .el-layout .og-content{order:-1}}
 .el-console{display:grid;grid-template-columns:minmax(0,1fr) 332px;align-items:start;margin:0 0 22px;background:#fafcf8;overflow:visible}
 .el-console .el-cell{border:0;border-radius:10px 0 0 10px;padding:18px;min-width:0}
 .el-scene-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;margin:0 0 10px}.el-scene-heading>span{font-size:12px;color:#536e64}

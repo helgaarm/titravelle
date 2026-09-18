@@ -15,6 +15,7 @@ import { checkWorkspace } from './workspace-browser-check.mjs';
 import { checkBenchMaterials } from './materials-browser-check.mjs';
 import { checkElectro } from './electro-browser-check.mjs';
 import { checkSavedStateSecurity } from './security-browser-check.mjs';
+import { checkElectroResponsiveness } from './electro-responsive-browser-check.mjs';
 
 async function checkNavigation({base,connection,evaluate,click,waitFor,screenshot}) {
   const readState=()=>evaluate('localStorage.getItem("titravelle-science-lab-v2")');
@@ -98,9 +99,9 @@ try {
     for (let n = 0; n < 100; n++) { if (await evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)}))`)) return; await delay(50); }
     throw new Error(`Timed out waiting for ${selector}; page: ${await evaluate('JSON.stringify({url: location.href, title: document.title, text: document.body.innerText.slice(0, 1100)})')}; errors: ${JSON.stringify(errors)}`);
   };
-  const screenshot = async (name, selector) => {
+  const screenshot = async (name, selector, {viewport=false}={}) => {
     const clip = selector ? await evaluate(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()`) : undefined;
-    const r = await connection('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, ...(clip?{clip}:{}) });
+    const r = await connection('Page.captureScreenshot', { format: 'png', captureBeyondViewport: !viewport, ...(clip?{clip}:{}) });
     await writeFile(resolve(artifacts, name), Buffer.from(r.data, 'base64'));
   };
   await connection('Runtime.enable');
@@ -108,6 +109,7 @@ try {
   await connection('Network.enable');
   await connection('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
   await checkElectro({base,connection,evaluate,click,fill,text,waitFor,screenshot});
+  await checkElectroResponsiveness({base,connection,evaluate,click,waitFor,screenshot});
   if(process.env.TEST_SUITE!=='electro'&&!process.argv.includes('--electro-only')){
   await checkGlassware({base,connection,evaluate,click,waitFor,screenshot});
   await checkTransfers({base,connection,evaluate,click,fill,waitFor,screenshot});
