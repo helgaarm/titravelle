@@ -5,8 +5,8 @@ export async function checkWorkspace({base,connection,evaluate,click,fill,text,w
   const tab=t=>click(`[data-lab="organic-tab"][data-tab="${t}"]`),act=a=>click(`[data-organic="${a}"]`);
   await connection('Page.navigate',{url:base});await waitFor('.sl-reagent');
   await evaluate(`localStorage.removeItem('${key}')`);await connection('Page.reload');await waitFor('.sl-reagent');
-  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),63);
-  assert.equal(await evaluate('document.querySelectorAll(".sl-workspace nav button").length'),8);
+  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),74);
+  assert.equal(await evaluate('document.querySelectorAll(".sl-workspace nav button").length'),9);
   await click('[data-lab="reagent"][data-reagent="copper"]');await click('[data-lab="add"]');await click('[data-lab="measure"][data-kind="mass"]');
   await fill('#sl-draft-conclusion','Keep both samples.');const aqueous=await state();
   await fill('#sl-shelf-search','methoxide');await click('[data-lab="organic-reagent"][data-reagent="methoxide"]');
@@ -54,7 +54,7 @@ export async function checkWorkspace({base,connection,evaluate,click,fill,text,w
   await click('[data-lab="restart-free"]');await click('[data-lab="confirm-new"]');await connection('Page.reload');await waitFor('.sl-reagent');
   assert.equal((await state()).study,null);assert.equal((await state()).station,'aqueous');assert.equal((await state()).mode,'free');
   assert.match(await text('.sl-heading'),/No experiment selected/);assert.equal(await evaluate('document.querySelectorAll(".sl-guide,.og-guide").length'),0);
-  assert.equal((await state()).draft.objective,'');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),63);
+  assert.equal((await state()).draft.objective,'');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),74);
   await change('#sl-mode','guided');assert.equal(await evaluate('document.querySelectorAll(".sl-guide,.og-guide").length'),0,'Changing learning mode must not select an experiment');
   assert.doesNotMatch(await text('.science-lab'),/Discussion · compare/);
   await click('[data-lab="snapshot"]');assert.equal((await state()).notes.at(-1).title,'Free exploration');

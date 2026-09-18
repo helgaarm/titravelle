@@ -3,6 +3,7 @@ import { recordReactions, equationReport, validReactionHistory } from './lab-rea
 import { COPPER, copperEquilibrium } from './lab-copper.js';
 import { validOrganic } from './organic-engine.js';
 import { validElectro } from './electro-engine.js';
+import { validMineral } from './mineral-engine.js';
 import { MATERIAL, hasMaterials, materialWarning, materialAppearance, mergeMaterials, takeMaterials, dissolveSimpleSalts, validMaterials } from './lab-materials.js';
 
 const clone = value => structuredClone(value);
@@ -301,7 +302,8 @@ export function validateLab(value) {
   if (value.ventilationOn !== undefined && typeof value.ventilationOn !== 'boolean') return false;
   if (value.organic !== undefined && !validOrganic(value.organic)) return false;
   if (value.electro !== undefined && !validElectro(value.electro)) return false;
-  if (value.station !== undefined && !['aqueous','prepare','reaction','workup','analysis','materials','report','electro'].includes(value.station)) return false;
+  if (value.mineral !== undefined && !validMineral(value.mineral)) return false;
+  if (value.station !== undefined && !['aqueous','prepare','reaction','workup','analysis','materials','report','electro','mineral'].includes(value.station)) return false;
   for (const field of ['seed', 'time', 'gasMoles', 'wasteMass', 'evaporatedMass', 'balanceTare']) if (!Number.isFinite(value[field]) || value[field] < 0) return false;
   for (const e of EQUIPMENT) {
     const v = value.vessels?.[e.id];

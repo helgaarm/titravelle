@@ -1,5 +1,6 @@
 // Project-authored records. Equilibrium constants use the sources in SCIENTIFIC_MODEL.md.
 import { ELECTRO_STUDIES } from './electro-data.js';
+import { MINERAL_STUDIES } from './mineral-data.js';
 export const CONSTANTS = { kw: 1e-14, acetateKa: 1.8e-5, carbonKa1: 4.3e-7, carbonKa2: 4.7e-11, agclKsp: 1.8e-10, agclMolarMass: 143.32, cp: 4.184, neutralizationJ: 57300 };
 export const SPECIES = {
   Na: { label: 'Na⁺', charge: 1 }, Cl: { label: 'Cl⁻', charge: -1 }, Ag: { label: 'Ag⁺', charge: 1 },
@@ -54,4 +55,5 @@ export const STUDIES = [
 ];
 STUDIES.push({id:'soi18',code:'06',title:'SOI-18: test the whole claim',topic:'Organic synthesis & materials',objective:'Explore sucrose acyl exchange, qualify purity independently, and compare synthetic snow-friction data against matched controls.',question:'Can the batch meet chemical specifications, and does the comparative evidence support a performance claim?',steps:['Qualify and dry the starting lots; prepare the reactor and volatile collection.','Follow sequential exchange, sampling, work-up and independent product QC.','Explore assumed material properties and matched controls; report uncertainty and failures.'],analysis:'This experimental compound lacks validated kinetic and performance data here. Distinguish calculated stoichiometry from assumed kinetics and properties; synthetic measurements cannot demonstrate real-world efficacy or safety.'});
 STUDIES.push(...ELECTRO_STUDIES);
+STUDIES.push(...MINERAL_STUDIES);
 export const MODES = { guided: 'Guided', student: 'Student', free: 'Free exploration', assessment: 'Assessment', professor: 'Professor' };

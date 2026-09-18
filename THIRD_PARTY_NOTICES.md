@@ -8,6 +8,8 @@ The app relies on the user's separately installed browser and Node.js runtime. T
 
 ## Scientific references
 
+The mineral-screening addition follows a user-supplied capability brief. Its workflows, guidance, SVG vials and grain illustrations, sample generator, synthetic response rules and report UI are project-authored. Scientific references and their scope are listed in [MINERAL_MODEL.md](MINERAL_MODEL.md). Only outbound references are included; no source figures, instrument spectra, third-party code, extended wording or commercial kit layouts are bundled. The MIT license continues to cover the project-authored work.
+
 These sources informed factual chemistry. The project provides outbound links and locally written explanations, not embedded copies of articles, photographs, diagrams, handouts, or source-site designs. Citation acknowledges a factual source; it is not a license to copy protected presentation or a claim of endorsement.
 
 | Reference | Facts checked |

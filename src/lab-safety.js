@@ -102,6 +102,9 @@ export function benchSafety(state) {
     grouped.get(key).vessels.push(EQUIPMENT_BY_ID[v.id].name);
   }
   const notices = [...grouped.values()];
+  if(state.mineral)notices.push({...notice('mineral-analysis','Mineral concentrate and analytical reagents',
+    'Fine concentrate may contain silica, lead and naturally radioactive minerals. Nitric and oxidising-chloride modules represent corrosive chemistry and toxic fumes; soluble platinum salts can sensitize, and Arsenazo III contains arsenic.',
+    'Use the simulated hood for contained digestion steps. Retain labelled solids, acidic solutions and test waste separately. A radiation-screen result or virtual hood switch is not a real safety assessment.',true),vessels:['Mineral analysis / retained fractions']});
   if(state.electro)notices.push(...electroSafety(state.electro,state.ventilationOn===true));
   if (state.organic && Object.values(state.organic.charged).some(Boolean)) notices.push({ ...notice('organic-run', 'Organic reactor, volatiles and collected waste',
     'An organic batch is present in this run. Methoxide is corrosive and moisture-reactive; methanol is toxic and flammable, and methyl acetate and work-up solvents are flammable. Switching equipment does not remove these precautions.',

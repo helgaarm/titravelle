@@ -16,6 +16,7 @@ import { checkBenchMaterials } from './materials-browser-check.mjs';
 import { checkElectro } from './electro-browser-check.mjs';
 import { checkSavedStateSecurity } from './security-browser-check.mjs';
 import { checkElectroResponsiveness } from './electro-responsive-browser-check.mjs';
+import { checkMinerals } from './mineral-browser-check.mjs';
 
 async function checkNavigation({base,connection,evaluate,click,waitFor,screenshot}) {
   const readState=()=>evaluate('localStorage.getItem("titravelle-science-lab-v2")');
@@ -27,7 +28,7 @@ async function checkNavigation({base,connection,evaluate,click,waitFor,screensho
     assert.equal(await evaluate('Boolean(document.querySelector("a[href*=legacy],a[href*=gold],.chemical-card"))'),false);
   }
   await click('[data-lab="page"][data-page="studies"]');
-  assert.equal(await evaluate('document.querySelectorAll("[data-lab=study]:not([data-study^=custom])").length'),9);
+  assert.equal(await evaluate('document.querySelectorAll("[data-lab=study]:not([data-study^=custom])").length'),14);
   assert.equal(await evaluate('/gold experiment|legacy|earlier studies/i.test(document.body.innerText)'),false);
   await screenshot('current-experiments-desktop.png');
   for(const width of [390,320]) {
@@ -49,7 +50,7 @@ async function checkNavigation({base,connection,evaluate,click,waitFor,screensho
     assert.equal(await evaluate(`fetch('/src/${file}').then(r=>r.status)`),404);
   }
   await connection('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
-  console.log('PASS: nine studies, current notebook preservation, removed links/assets, retired bookmark fallback, mobile navigation, and dialog Escape');
+  console.log('PASS: fourteen studies, current notebook preservation, removed links/assets, retired bookmark fallback, mobile navigation, and dialog Escape');
 }
 
 const base = process.env.TEST_URL || 'http://localhost:5174';
@@ -108,6 +109,9 @@ try {
   await connection('Page.enable');
   await connection('Network.enable');
   await connection('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
+  if(process.argv.includes('--mineral-only')){
+    await checkMinerals({base,connection,evaluate,click,fill,text,waitFor,screenshot});
+  }else{
   await checkElectro({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkElectroResponsiveness({base,connection,evaluate,click,waitFor,screenshot});
   if(process.env.TEST_SUITE!=='electro'&&!process.argv.includes('--electro-only')){
@@ -119,9 +123,11 @@ try {
   await checkOrganic({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkWorkspace({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkBenchMaterials({base,connection,evaluate,click,fill,text,waitFor,screenshot});
+  await checkMinerals({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkScienceLab({base,connection,evaluate,click,fill,text,waitFor,screenshot});
   await checkSavedStateSecurity({connection,evaluate,waitFor});
   await checkNavigation({base,connection,evaluate,click,waitFor,screenshot});
+  }
   }
   assert.deepEqual(errors, []);
   assert.deepEqual(thirdPartyRequests, [], 'The application must not load third-party assets.');
