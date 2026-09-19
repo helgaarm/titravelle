@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {MINERAL_PORTIONS,mineralProtocol} from '../src/mineral-protocol.js';
 export async function checkMinerals({base,connection,evaluate,click,fill,text,waitFor,screenshot}){
   const state=()=>evaluate('JSON.parse(localStorage.getItem("titravelle-science-lab-v2"))');
   const check=async selector=>{
@@ -8,7 +9,40 @@ export async function checkMinerals({base,connection,evaluate,click,fill,text,wa
       if(reply.exceptionDetails)throw Error('Could not check the requested control.');
     }finally{await connection('Runtime.releaseObject',{objectId:result.objectId});}
   };
-  const record=async message=>{await fill('#mn-observe-interpretation',message);await check('#mn-record-form [name=reviewed]');await click('[data-mineral=record]');};
+  const openNotes=()=>evaluate('document.querySelector("#mn-observation-notes").open=true');
+  const record=async message=>{await openNotes();await fill('#mn-observe-interpretation',message);await check('#mn-record-form [name=reviewed]');await click('[data-mineral=record]');};
+  const selectReagent=async reagent=>{await fill('#mn-reagent',reagent);await evaluate('document.querySelector("#mn-reagent").dispatchEvent(new Event("change",{bubbles:true}))');};
+  const perform=async (route,index)=>{
+    const plan=mineralProtocol(route,index);
+    await fill('#mn-apparatus',plan.apparatus);await fill('#mn-source',plan.source);await click('[data-mineral=bench-load]');
+    assert.equal((await state()).mineral.pending,null,'Loading apparatus must not generate analytical evidence');
+    if(plan.reagent){await selectReagent(plan.reagent);await click('[data-mineral=bench-add]');}
+    if(plan.assay)for(const lane of ['blank','positive','sample','spike'])await click(`[data-mineral=bench-control][data-lane=${lane}]`);
+    if(plan.mix)await click('[data-mineral=bench-mix]');
+    if(plan.apparatus==='filter')await click('[data-mineral=bench-filter]');
+    if(plan.apparatus==='microscope')await click('[data-mineral=bench-focus]');
+    if(['counter','photometer'].includes(plan.apparatus))await click('[data-mineral=bench-background]');
+    if(route==='A'&&index===0){
+      const prepared=(await state()).mineral;
+      await connection('Page.reload');await waitFor('#mn-run');assert.deepEqual((await state()).mineral,prepared);
+      assert.equal(await evaluate('document.querySelector("#mn-reagent").value'),plan.reagent);
+      for(const width of [390,320]){
+        await connection('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:true});
+        await evaluate('document.querySelector("#mn-apparatus-form").scrollIntoView({block:"start"})');
+        assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
+        const scrollBefore=await evaluate('scrollY');await click('[data-mineral=bench-mix]');
+        assert.equal(await evaluate('document.activeElement.dataset.mineral'),'bench-mix');
+        assert.ok(Math.abs(await evaluate('scrollY')-scrollBefore)<250,'Setup actions keep the active controls in view');
+        await click('[data-mineral=bench-mix]');
+        await screenshot(`mineral-apparatus-${width}.png`,null,{viewport:true});
+      }
+      await connection('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
+    }
+    await click('#mn-run');const result=(await state()).mineral;
+    assert.equal(result.pending.route,route);assert.equal(result.runs[route].bench.completed,true);
+    assert.ok(result.pending.procedure.length>=2);assert.equal(await evaluate('document.querySelector("#mn-observation-notes").open'),false);
+    if((route==='A'&&[0,1,2].includes(index))||route==='D')await screenshot(`mineral-bench-${route}-${index}.png`,'#mn-workbench');
+  };
   const changeMode=async mode=>{await fill('#sl-mode',mode);await evaluate('document.querySelector("#sl-mode").dispatchEvent(new Event("change",{bubbles:true}))');};
   const draftValues=()=>evaluate('Object.fromEntries([...document.querySelector("#mn-conclusion-form").elements].filter(el=>el.name).map(el=>[el.name,el.type==="checkbox"?el.checked:el.value]))');
   const aDraft={confidence:'Probable',reason:'A draft: compare the cleared precipitate with B before deciding.',compared:true};
@@ -16,26 +50,39 @@ export async function checkMinerals({base,connection,evaluate,click,fill,text,wa
   await connection('Page.navigate',{url:base});await waitFor('.sl-reagent');
   await click('[data-lab=page][data-page=studies]');
   assert.equal(await evaluate('document.querySelectorAll("[data-study^=mineral-]").length'),5);
-  await click('[data-study=mineral-all]');await click('[data-lab=confirm-new]');await waitFor('#mn-receive');
+  await click('[data-study=mineral-all]');await click('[data-lab=confirm-new]');await waitFor('#mn-preparation');
+  assert.equal(await evaluate('document.querySelector("#mn-split").disabled'),true);
+  await click('[data-mineral=bench-weigh][data-portion=A]');assert.match(await text('#toast'),/homogenise|tare/i);
+  await click('[data-mineral=bench-homogenise]');
+  for(const portion of Object.keys(MINERAL_PORTIONS)){await click('[data-mineral=bench-tare]');await click(`[data-mineral=bench-weigh][data-portion=${portion}]`);}
+  assert.equal((await state()).mineral.preparation.weighed.length,6);
+  await screenshot('mineral-preparation.png','#mn-preparation');
   await check('#mn-nugget');await click('[data-mineral=split]');
-  assert.equal((await state()).mineral.pending.step,'split');assert.equal(await evaluate('document.querySelector("#mn-next").disabled'),true);
+  assert.equal((await state()).mineral.pending.step,'split');await openNotes();
   await fill('#mn-observe-interpretation','Reference preserved; independent routes prevent carry-over.');
-  await connection('Page.reload');await waitFor('#mn-observe-interpretation');
+  await connection('Page.reload');await waitFor('#mn-observation-notes');await openNotes();
   assert.equal(await evaluate('document.querySelector("#mn-observe-interpretation").value'),'Reference preserved; independent routes prevent carry-over.');
   await record('Reference preserved; independent routes prevent carry-over.');
   const preserved=(await state()).mineral.portions.Original;
   const beforeMode=(await state()).mineral;
   await changeMode('student');assert.equal(await evaluate('Boolean(document.querySelector(".mn-advice"))'),false);
   await changeMode('assessment');assert.equal(await evaluate('Boolean(document.querySelector(".mn-equation"))'),false);
-  assert.match(await text('#mn-action'),/fume hood OFF/);
-  await click('#mn-next');assert.equal((await state()).mineral.runs.A.index,0);assert.match(await text('#toast'),/fume hood/);
+  assert.match(await text('#mn-workbench'),/fume hood OFF/);
+  await click('#mn-run');assert.equal((await state()).mineral.runs.A.index,0);assert.match(await text('#toast'),/Load/i);
   await changeMode('guided');assert.deepEqual((await state()).mineral,beforeMode);
   assert.equal(await evaluate('Boolean(document.querySelector(".mn-advice"))'),true);
+  await fill('#mn-apparatus','reactor');await fill('#mn-source','Original:solid');await click('[data-mineral=bench-load]');
+  assert.equal((await state()).mineral.runs.A.bench,undefined,'Protected reference cannot be loaded for digestion');
+  await fill('#mn-source','A:solid');await click('[data-mineral=bench-load]');
+  await selectReagent('mineral:min-nitric');await click('[data-mineral=bench-add]');
+  assert.equal((await state()).mineral.runs.A.bench.charge,0);assert.match(await text('#toast'),/fume hood/);
+  await fill('#mn-charge','99');await click('[data-mineral=bench-reset]');
+  assert.equal((await state()).mineral.runs.A.bench.loaded,false,'Invalid unsubmitted dose must not block clearing the setup');
   await click('[data-lab=ventilation]');assert.equal((await state()).ventilationOn,true);
   for(const route of ['A','B','C','D']){
     await click(`#mn-tab-${route}`);
     for(let index=0;index<5;index++){
-      await click('#mn-next');assert.equal((await state()).mineral.pending.route,route);
+      await perform(route,index);
       if(route==='A'&&index===2){
         assert.equal(await evaluate('document.querySelectorAll(".mn-vial-card").length'),4);
         await screenshot('mineral-silver-controls.png','.mn-vials');
@@ -113,12 +160,12 @@ export async function checkMinerals({base,connection,evaluate,click,fill,text,wa
   await click('[data-lab=page][data-page=bench]');await click('[data-lab=aqueous-station]');
   assert.equal((await state()).mineral.revealed,true);
   await fill('#sl-shelf-scope','mineral');await evaluate('document.querySelector("#sl-shelf-scope").dispatchEvent(new Event("change",{bubbles:true}))');
-  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),11);
+  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),13);
   await click('[data-reagent=min-thiosulfate]');await click('[data-lab=add-material]');assert.ok((await state()).vessels.beaker.materials);
   await click('[data-tab=mineral]');await click('[data-lab=restart-free]');await click('[data-lab=confirm-new]');
   assert.equal((await state()).mineral,undefined);assert.ok((await state()).notes.at(-1).mineralReport);
   await click('[data-lab=undo]');assert.equal((await state()).mineral.revealed,true);
   await connection('Page.reload');await waitFor('#mn-tab-A');assert.equal((await state()).mineral.revealed,true);
-  console.log('PASS: mineral routes, persistent independent conclusion drafts, mode-safe feedback/exports/snapshots, control/hood gates, references, instruments, shared shelf/notebook/reset/undo and mobile layout');
+  console.log('PASS: hands-on mineral preparation and four analytical routes, apparatus/reagents/controls, reload persistence, independent drafts, mode-safe reports, instruments, shared shelf/reset/undo and mobile layout');
   await evaluate('localStorage.removeItem("titravelle-science-lab-v2")');await connection('Page.reload');await waitFor('.sl-reagent');
 }

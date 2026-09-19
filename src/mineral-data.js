@@ -47,6 +47,8 @@ export const MINERAL_STUDIES=[
 export const MINERAL_STOCKS=[
   ['min-concentrate','Unknown heavy-mineral concentrate','Mineral mixture','Geological samples','solid','Fine mineral dust may contain silica, lead and naturally radioactive minerals. Use containment; do not infer composition from appearance.'],
   ['min-nitric','Nitric acid · analytical module','HNO₃','Analytical acids','liquid','Corrosive oxidizer; dissolution may evolve toxic nitrogen oxides. Virtual hood required.'],
+  ['min-chloride-pack','Oxidising chloride · virtual reagent pack','Virtual chloride module','Analytical acids','liquid','Contained teaching reagent, not a physical formulation. Corrosive chemistry and toxic fumes require the virtual hood.'],
+  ['min-ree-pack','Resistant-mineral decomposition · virtual reagent pack','Virtual REE module','Analytical acids','liquid','Abstract mineral decomposition, not a real digestion mixture. Use the contained module and shared virtual hood.'],
   ['min-thiosulfate','Sodium thiosulfate solution','Na₂S₂O₃','Analytical reagents','liquid','Acid can decompose thiosulfate; chemical compatibility and waste collection matter.'],
   ['min-tin','Tin(II) chloride · fresh test reagent','SnCl₂','Analytical reagents','liquid','Acidic reagent; oxidation and interfering ions can invalidate a colour test.'],
   ['min-ammonium','Ammonium chloride','NH₄Cl','Analytical reagents','solid','Avoid dust and contact; collect metal-bearing test waste.'],

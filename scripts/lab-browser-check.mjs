@@ -16,7 +16,7 @@ export async function checkScienceLab({base,connection,evaluate,click,fill,text,
   const downloaded=async name=>{for(let i=0;i<60;i++){try{return await readFile(resolve(downloads,name),'utf8');}catch{await new Promise(r=>setTimeout(r,50));}}throw Error('Missing download '+name);};
   const measure=kind=>act('measure',`[data-kind="${kind}"]`);
   await connection('Page.navigate',{url:base});await waitFor('.sl-reagent');
-  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),74);
+  assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),76);
   assert.equal(await text('#sl-last-reading'),'—');
   assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
   await screenshot('science-lab-desktop.png');

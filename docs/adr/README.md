@@ -11,6 +11,7 @@ The first records were written on 2026-09-19 against `0eef3bcca4b635639e0afaa85f
 | [0003](0003-mineral-evidence-workflow.md) | Accepted, retrospective | Independent mineral aliquots and controlled evidence before instrumental comparison |
 | [0004](0004-learning-mode-contract.md) | Accepted, implemented | Make learning-mode behavior explicit for specialized equipment |
 | [0005](0005-mineral-conclusion-drafts.md) | Accepted, implemented | Persist unsubmitted mineral conclusions independently for each route |
+| [0006](0006-hands-on-mineral-apparatus.md) | Accepted, implemented | Perform mineral analyses through staged apparatus actions before recording evidence |
 
 ## Maintaining the records
 

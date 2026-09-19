@@ -6,6 +6,8 @@ import {mineralView} from '../src/mineral-ui.js';
 import {createLab,validateLab,operate} from '../src/lab-engine.js';
 import {openStation,restartLab,LAB_MATERIALS} from '../src/lab-workspace.js';
 import {benchSafety} from '../src/lab-safety.js';
+import {MINERAL_PORTIONS,mineralProtocol,mineralBench} from '../src/mineral-protocol.js';
+import {mineralPreparationView,mineralWorkbenchView} from '../src/mineral-workbench.js';
 const op=(s,action,args={})=>operateMineral(s,action,args,{ventilationOn:true});
 const record=s=>op(s,'record',{reviewed:true,interpretation:'Compare appearance with the controls; a negative screen does not establish absence.'});
 function prepared(seed=3,nugget=false){return record(op(createMineral(seed),'split',{nugget}));}
@@ -147,7 +149,7 @@ test('mineral modes hide generated guidance and answers while retaining evidence
   for(const mode of ['guided','student','free','assessment','professor']){
     const presentation=mineralPresentation(mode),view=mineralView(s,{mode}),reportView=mineralView(s,{mode,panel:'report'}),report=mineralReport(s,{mode}),stepView=mineralView(pending,{mode});
     assert.equal(stepView.includes('class="mn-advice"'),mode==='guided');
-    assert.match(mineralView(prepared(4),{mode}),/Virtual fume hood OFF/);assert.match(stepView,/id="mn-record-form"/);assert.match(stepView,/id="mn-next"/);
+    assert.match(mineralView(prepared(4),{mode}),/Virtual fume hood OFF/);assert.match(stepView,/id="mn-record-form"/);assert.match(stepView,/id="mn-run"/);
     assert.match(view,/Your conclusion/);assert.match(view,/mn-vial-card/);assert.match(report,/Recovery and test specificity limit the claim/);
     assert.equal(view.includes('mn-model-feedback'),mode!=='assessment');
     assert.equal(reportView.includes('id="mn-instrument-form"'),mode!=='assessment');
@@ -171,4 +173,111 @@ test('assessment notebook exports use immutable safe copies and do not expose ol
   assert.equal(mineralSnapshotReport(notes[0],'professor'),full);
   assert.doesNotMatch(JSON.stringify(exported),/## Simulator ground truth/);assert.match(exported[0].mineralReport,/Recorded observations/);
   assert.equal(exported[2].draft.conclusion,'User text');assert.deepEqual(notes,before);assert.deepEqual(mineralNotebookNotes(notes,'guided'),notes);
+});
+
+function setupApparatus(s,{charge=1,mix=true,exposure=1,sampleFraction=.1,omit=[]}={}){
+  const p=mineralProtocol(s.route,s.runs[s.route].index);
+  s=op(s,'bench-load',{apparatus:p.apparatus,source:p.source});
+  s=op(s,'bench-settings',{exposure,sampleFraction});
+  if(p.reagent)s=op(s,'bench-add',{reagent:p.reagent,charge});
+  if(p.assay)for(const lane of ['blank','positive','sample','spike'])if(!omit.includes(lane))s=op(s,'bench-control',{lane});
+  if(p.mix&&mix)s=op(s,'bench-mix');
+  if(p.apparatus==='filter')s=op(s,'bench-filter');
+  if(p.apparatus==='microscope')s=op(s,'bench-focus');
+  if(['counter','photometer'].includes(p.apparatus))s=op(s,'bench-background');
+  return s;
+}
+test('hands-on sample preparation requires homogenisation, tare and six separate transfers',()=>{
+  let s=createMineral(22);const initial=structuredClone(s);
+  assert.match(mineralPreparationView(s),/Analytical balance/);
+  assert.throws(()=>op(s,'split',{fromBench:true}),/six/);
+  assert.throws(()=>op(s,'bench-weigh',{portion:'A'}),/Homogenise/);assert.deepEqual(s,initial);
+  s=op(s,'bench-homogenise');assert.throws(()=>op(s,'bench-weigh',{portion:'A'}),/Tare/);
+  for(const portion of Object.keys(MINERAL_PORTIONS)){s=op(s,'bench-tare');s=op(s,'bench-weigh',{portion});assert.equal(validMineral(s),true);assert.equal(s.preparation.tared,false);}
+  assert.equal(s.split,false);assert.equal(s.preparation.weighed.length,6);assert.equal(s.seed,initial.seed);
+  s=op(s,'bench-nugget',{nugget:true});assert.match(mineralPreparationView(s),/id="mn-nugget" type="checkbox" checked/);
+  const before=structuredClone(s);mineralPreparationView(s);assert.deepEqual(s,before);
+  s=op(s,'split',{fromBench:true,nugget:true});assert.equal(validMineral(s),true);assert.equal(Object.values(s.portions).reduce((sum,p)=>sum+p.grams,0),100);
+  assert.throws(()=>op(s,'bench-weigh',{portion:'A'}),/Record/);
+});
+
+test('every mineral analysis can be performed using apparatus, reagents, fractions and controls',()=>{
+  let s=prepared(15,true);const references=structuredClone([s.portions.Original,s.portions.E]);
+  for(const route of ['A','B','C','D']){
+    s=op(s,'select',{route});
+    for(const step of MINERAL_STEPS[route]){
+      const before=structuredClone(s);s=setupApparatus(s);assert.equal(validMineral(s),true,route+'/'+step.id);
+      assert.deepEqual(s.portions,before.portions,'Setup reserves the labelled fraction; treatment alone changes its target inventory');
+      const staged=structuredClone(s);mineralWorkbenchView(s);mineralWorkbenchView(s,{hood:true});assert.deepEqual(s,staged);
+      s=op(s,'bench-run');assert.ok(s.pending.procedure.length>=2);assert.equal(validMineral(s),true,route+'/'+step.id+' run');
+      assert.equal(s.runs[route].bench.completed,true);assert.throws(()=>op(s,'bench-run'),/Record/);
+      s=record(s);assert.equal(validMineral(s),true);
+    }
+    s=op(s,'conclude',{compared:true,confidence:'Inconclusive',reason:'Inspect the actions, sample and control responses.'});
+  }
+  assert.deepEqual([s.portions.Original,s.portions.E],references);assert.equal(mineralComplete(s),true);
+  assert.ok(s.journal.slice(1).every(r=>r.procedure?.length));assert.match(mineralReport(s),/Performed apparatus operations/);
+  assert.equal(validMineral(JSON.parse(JSON.stringify(s))),true);
+});
+
+test('apparatus rejects incompatible loading, missing preparation and bad settings atomically',()=>{
+  let s=prepared(4);const p=mineralProtocol('A',0),original=structuredClone(s);
+  assert.throws(()=>op(s,'bench-load',{apparatus:'rack',source:p.source}),/digestion vessel/);
+  assert.throws(()=>op(s,'bench-load',{apparatus:p.apparatus,source:'E:solid'}),/Load A/);assert.deepEqual(s,original);
+  assert.throws(()=>op(s,'bench-run'),/load/i);s=op(s,'bench-load',{apparatus:p.apparatus,source:p.source});
+  const before=structuredClone(s);
+  assert.throws(()=>operateMineral(s,'bench-add',{reagent:p.reagent,charge:1}),/fume hood/);
+  assert.throws(()=>op(s,'bench-add',{reagent:'aqueous:salt',charge:1}),/supports/);
+  assert.throws(()=>op(s,'bench-add',{reagent:p.reagent,charge:Infinity}),/charge/);
+  assert.throws(()=>op(s,'bench-settings',{exposure:10,sampleFraction:.1}),/settings/);assert.deepEqual(s,before);
+  s=op(s,'bench-add',{reagent:p.reagent,charge:1});s=record(op(s,'bench-run'));
+  const filter=mineralProtocol('A',1);s=op(s,'bench-load',{apparatus:filter.apparatus,source:filter.source});s=op(s,'bench-add',{reagent:filter.reagent,charge:1});
+  assert.throws(()=>op(s,'bench-run'),/Seat the filter/);s=op(s,'bench-filter');s=record(op(s,'bench-run'));
+  const assay=mineralProtocol('A',2);s=op(s,'bench-load',{apparatus:assay.apparatus,source:assay.source});s=op(s,'bench-add',{reagent:assay.reagent,charge:1});
+  assert.throws(()=>op(s,'bench-run'),/Pipette a sample/);
+  s=op(s,'bench-reset');assert.equal(mineralBench(s).loaded,false);
+});
+
+test('hands-on dose, mixing, exposure, portion size and missing controls change analytical evidence',()=>{
+  let initial=createMineral(8);initial.hidden.matrix=0;initial.hidden.encapsulation=.9;initial.hidden.ppm.Ag=3000;
+  for(const r of Object.values(initial.runs))r.conditions={blank:0,reagent:1,suppression:1};initial=record(op(initial,'split'));
+  const good=record(op(setupApparatus(initial),'bench-run'));
+  const poor=record(op(setupApparatus(initial,{charge:.25,mix:false,exposure:.5}),'bench-run'));
+  assert.ok(poor.portions.A.fractions.solution.Ag<good.portions.A.fractions.solution.Ag*.1);assert.equal(validMineral(poor),true);
+  let filtered=record(op(setupApparatus(good),'bench-run'));
+  const small=record(op(setupApparatus(filtered,{sampleFraction:.05}),'bench-run'));
+  const large=record(op(setupApparatus(filtered,{sampleFraction:.2}),'bench-run'));
+  assert.ok(Math.abs(small.portions.A.fractions.tests.Ag-filtered.portions.A.fractions.solution.Ag*.1)<1e-8,'Sample and spike consume separate 5% portions');
+  assert.ok(Math.abs(large.portions.A.fractions.tests.Ag-small.portions.A.fractions.tests.Ag*4)<1e-8);
+  assert.ok(large.runs.A.assays.chloride.sample.target>small.runs.A.assays.chloride.sample.target);
+  let missing=record(op(setupApparatus(filtered,{omit:['positive','spike']}),'bench-run'));
+  missing=record(op(setupApparatus(missing,{omit:['positive','spike']}),'bench-run'));
+  missing=record(op(setupApparatus(missing),'bench-run'));
+  missing=op(missing,'conclude',{compared:true,confidence:'Inconclusive',reason:'No positive control was prepared.'});
+  assert.equal(missing.runs.A.conclusion.confidence,'Inconclusive');assert.match(missing.runs.A.conclusion.reason,/positive control/);
+  for(const state of [small,large,missing])assert.equal(validMineral(state),true);
+  const corrupt=structuredClone(missing);corrupt.runs.A.bench.source='<img>';assert.equal(validMineral(corrupt),false);
+  const old=structuredClone(initial);delete old.preparation;assert.equal(validMineral(old),true);
+});
+
+test('instrument preparation gates, zeroed absorbance and omitted stages preserve evidence meaning',()=>{
+  let s=op(prepared(18),'select',{route:'D'});
+  s=record(op(setupApparatus(s),'bench-run'));
+  s=setupApparatus(s,{exposure:.5});
+  s=op(s,'bench-settings',{exposure:1.5,sampleFraction:.1});
+  assert.throws(()=>op(s,'bench-run'),/background/);
+  s=op(s,'bench-background');s=record(op(s,'bench-run'));
+  assert.equal(s.runs.D.radiation.seconds,90);assert.equal(s.runs.D.radiation.background,36);
+  s=record(op(setupApparatus(s),'bench-run'));s=record(op(setupApparatus(s),'bench-run'));
+  const before=structuredClone(s),plan=mineralProtocol('D',4);
+  s=op(s,'bench-load',{apparatus:plan.apparatus,source:plan.source});
+  assert.throws(()=>op(s,'bench-background'),/reagent blank/);
+  s=op(s,'bench-add',{reagent:plan.reagent,charge:1});s=op(s,'bench-control',{lane:'sample'});
+  assert.throws(()=>op(s,'bench-run'),/Zero/);
+  s=setupApparatus(op(s,'bench-reset'));s=op(s,'bench-run');
+  assert.equal(s.runs.D.assays.arsenazo.blank.absorbance,0);
+  assert.equal(s.runs.D.assays.arsenazo.sample.zeroed,true);assert.equal(validMineral(s),true);
+  const malformed=structuredClone(s);malformed.runs.D.assays.arsenazo.sample.absorbance='<img>';
+  assert.equal(validMineral(malformed),false);
+  const skipped=op(before,'skip');assert.match(mineralWorkbenchView(skipped),/not performed/);assert.doesNotMatch(mineralWorkbenchView(skipped),/mb-completed/);
 });
