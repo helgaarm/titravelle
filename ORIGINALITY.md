@@ -34,6 +34,8 @@ This is an implementation review, not a legal opinion, trademark registration se
 | `src/lab-glassware.js`, `src/lab-transfer.js` | Original apparatus drawings, menisci, markings, and transfer scenes |
 | `src/organic-*.js`, `src/organic.css`, `src/lab-shelf.js` | Original organic reaction/analysis scenarios, reactor and plots, and searchable shelf; targets supplied by the user, with references and assumptions in ORGANIC_MODEL.md |
 | `src/electro-*.js`, `src/electro.css` | Original cell and circuit drawings, calculation and transport models, synthetic measurements, interactive graphs and reports; references and assumptions in ELECTROCHEMISTRY_MODEL.md |
+| `src/mineral-*.js`, `src/mineral.css` | Original guided concentrate tests, target inventories, synthetic controls, test-vial/grain drawings and instrument comparison; user-supplied capability brief, with references and assumptions in MINERAL_MODEL.md |
+| `docs/adr/` | Project-authored architectural rationale and explicitly labelled proposals; the index records the retrospective baseline and recording dates |
 | `src/main.js`, `server.mjs`, `test/`, `scripts/` | Project-authored application support and validation using standard platform APIs |
 
 These provenance statements do not establish copyright ownership, copyrightability, exclusivity, or the absence of accidental similarity to unknown works.
