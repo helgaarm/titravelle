@@ -6,7 +6,7 @@ The scope is a transparent educational model, not a validated process-design, to
 
 ## Materials and sample preparation
 
-The shared shelf now has 63 entries: 13 existing aqueous stocks, 24 organic entries, 12 existing dry materials, and 14 electrochemical materials. The additions are sodium sulfate, zinc sulfate, a dilute-sulfuric-acid stock entry, and 11 electrode surfaces (including graphite and glassy carbon). These may also be weighed into ordinary vessels under the existing conservative material-tracking rules. Shelf selection never automatically charges an electrode or runs electrolysis.
+The shared shelf has 74 entries: 13 aqueous stocks, 24 organic entries, 12 dry materials, 14 electrochemical materials and 11 mineral-analysis stocks/references. The additions are sodium sulfate, zinc sulfate, a dilute-sulfuric-acid stock entry, and 11 electrode surfaces (including graphite and glassy carbon). These may also be weighed into ordinary vessels under the existing conservative material-tracking rules. Shelf selection never automatically charges an electrode or runs electrolysis.
 
 The cell accepts 10–1,000 mL, with undivided, porous, salt-bridge, cation-selective and anion-selective arrangements. Supported stock concentration increments are added at a fixed final volume, following an explicit solution-preparation approximation; this is not a stock-volume dispensing calculation. The source log records each increment. Different stocks may be combined, including different divided-cell compartments. Water, sodium sulfate, sodium chloride, copper sulfate, zinc sulfate, dilute sulfuric acid, sodium hydroxide, hydrochloric acid and silver nitrate are available from the shared chemical database.
 

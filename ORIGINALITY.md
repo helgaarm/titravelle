@@ -2,7 +2,7 @@
 
 Review date: 18 September 2026. Scope: the source and application assets in this workspace, available development history, package metadata, cited scientific references, and a limited public-web name search made during development.
 
-The current application contains nine investigations, shared chemistry equipment, original apparatus illustrations and transfer animations, equation calculations, and a scientific notebook. Its code, wording, and interface were authored for this project with AI assistance.
+The current application contains fourteen investigations, shared chemistry equipment, original apparatus illustrations and transfer animations, equation calculations, and a scientific notebook. Its code, wording, and interface were authored for this project with AI assistance.
 
 This is an implementation review, not a legal opinion, trademark registration search, patent/design clearance, or guarantee against infringement. No claim is made that every phrase, geometric symbol, teaching activity, or interface arrangement is unique worldwide.
 
@@ -12,7 +12,7 @@ This is an implementation review, not a legal opinion, trademark registration se
 | --- | --- |
 | Application name | An earlier public search found an existing chemistry-learning app called **Element Lab & Periodic Table**. The visible name, package name, export identity, and favicon use **Titravelle**. Exact-name and chemistry/app-related searches made during the review returned no relevant matches for Titravelle. This preliminary screening does not establish availability or rule out similar marks or unregistered rights. |
 | Commercial kit reference | The initial request referenced Thames & Kosmos CHEM C3000. Its product description and a publicly indexed sample-manual excerpt were consulted for context. No kit photo, logo, scan, manual page, downloaded design, or proprietary software package is bundled. No commercial-kit affiliation is presented in the interface. This development was not a formal clean-room process. |
-| Lessons and setup | The nine investigations follow the user's capability brief and use locally written questions, instructions, and explanations. Stock concentrations, doses, apparatus capacities, and model parameters are project choices. Common chemical facts, equations, terminology, and conventional laboratory methods remain. |
+| Lessons and setup | The fourteen investigations follow the user's capability brief and use locally written questions, instructions, and explanations. Stock concentrations, doses, apparatus capacities, and model parameters are project choices. Common chemical facts, equations, terminology, and conventional laboratory methods remain. |
 | Visuals | The mark, favicon, glassware, apparatus, transfer animations, and graphs use local HTML/CSS/SVG code. No stock-image library, icon package, manufacturer imagery, or commercial design template is bundled. Conventional apparatus shapes and simple symbols are not claimed as exclusive designs. |
 | Fonts | The application references device-installed system, serif, and monospace fonts. It distributes no font files and makes no external font request. |
 | Runtime packages | There are no npm runtime dependencies or vendored runtime libraries. The server uses Node.js built-ins; Node.js and the browser are independently installed software. |

@@ -1,5 +1,6 @@
 import { ORGANIC_STOCKS } from './organic-data.js';
 import { ELECTRO_MATERIALS } from './electro-data.js';
+import { MINERAL_STOCKS } from './mineral-data.js';
 
 // Quantities are tracked independently of reaction support. Phase sketches are
 // deliberately qualitative; supplied occupied volumes are not density predictions.
@@ -17,7 +18,7 @@ export const DRY_MATERIALS = [
   ['carbon','Activated carbon','C','Minerals & powders','Avoid inhaling dust; fine carbon dust can be combustible. Adsorption is not quantified.'],
   ['dry-copper','Copper(II) sulfate pentahydrate','CuSO4·5H2O','Dry salts','Harmful if swallowed; aquatic hazard. Avoid dust/contact and collect copper-containing waste.'],
 ].map(([id,name,formula,group,hint])=>({id,name,formula,group,hint,scope:'dry',form:'solid'}));
-export const DISPENSABLE_MATERIALS = [...ORGANIC_STOCKS.map(r=>({...r,scope:'organic'})),...DRY_MATERIALS,...ELECTRO_MATERIALS];
+export const DISPENSABLE_MATERIALS = [...ORGANIC_STOCKS.map(r=>({...r,scope:'organic'})),...DRY_MATERIALS,...ELECTRO_MATERIALS,...MINERAL_STOCKS];
 export const MATERIAL = Object.fromEntries(DISPENSABLE_MATERIALS.map(r=>[r.id,r]));
 const liquids=new Set(['fame','iso18','branch15','branch14','other18','quench','solvent','methylAcetate','methanol','water','ester']);
 export function defaultForm(id){return MATERIAL[id]?.form|| (liquids.has(id)?'liquid':'solid');}

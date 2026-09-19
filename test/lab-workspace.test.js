@@ -7,8 +7,8 @@ import { filterShelf, shelfView } from '../src/lab-shelf.js';
 import { benchSafety } from '../src/lab-safety.js';
 
 test('shared inventory distinguishes stock forms and filters across both chemistry areas',()=>{
-  assert.equal(LAB_MATERIALS.length,63);
-  assert.equal(new Set(LAB_MATERIALS.map(r=>r.catalogId)).size,63);
+  assert.equal(LAB_MATERIALS.length,74);
+  assert.equal(new Set(LAB_MATERIALS.map(r=>r.catalogId)).size,74);
   assert.equal(filterShelf(LAB_MATERIALS,'H2O').length,3); // two water entries and the hydrated copper salt
   assert.equal(filterShelf(LAB_MATERIALS,'H2O','all','aqueous')[0].catalogId,'aqueous:water');
   assert.equal(filterShelf(LAB_MATERIALS,'H2O','all','organic')[0].catalogId,'organic:water');
@@ -22,7 +22,7 @@ test('opening all equipment preserves aqueous samples, readings, draft, seed and
   s=operate(s,'measure',{vessel:'beaker',kind:'mass'}).state;s.draft.conclusion='My observations';
   const before=structuredClone(s);
   for(const [station] of LAB_STATIONS)s=openStation(s,station);
-  const {station,organic,electro,...unchanged}=s;assert.deepEqual(unchanged,before);
+  const {station,organic,electro,mineral,...unchanged}=s;assert.deepEqual(unchanged,before);
   assert.equal(organic.time,0);assert.equal(organic.inputMass,0);assert.equal(organic.samples.length,0);
   assert.equal(validateLab(JSON.parse(JSON.stringify(s))),true);
   assert.throws(()=>openStation(s,'unsupported'),/Choose available/);

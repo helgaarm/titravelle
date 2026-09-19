@@ -7,7 +7,7 @@ export async function checkOrganic({base,connection,evaluate,click,fill,text,wai
   const change=(selector,value)=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.value=${JSON.stringify(value)};e.dispatchEvent(new Event('change',{bubbles:true}));})()`);
   await connection('Page.navigate',{url:base});await waitFor('.sl-reagent');await evaluate(`localStorage.removeItem('${key}')`);await connection('Page.reload');await waitFor('.sl-reagent');
   await change('#sl-shelf-scope','aqueous');await fill('#sl-shelf-search','copper');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),1);assert.match(await text('.sl-reagents'),/Copper/);
-  await change('#sl-shelf-group','Acids');assert.match(await text('.sl-reagents'),/No matches/);await click('[data-lab="shelf-clear"]');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),63);
+  await change('#sl-shelf-group','Acids');assert.match(await text('.sl-reagents'),/No matches/);await click('[data-lab="shelf-clear"]');assert.equal(await evaluate('document.querySelectorAll(".sl-reagent").length'),74);
   assert.equal(await evaluate('document.querySelector(".sl-shelf-scroll").clientHeight<=355'),true);
   await click('[data-lab="page"][data-page="studies"]');await click('[data-lab="study"][data-study="soi18"]');await click('[data-lab="confirm-new"]');await waitFor('.og-layout');
   assert.equal((await state()).study,'soi18');assert.match(await text('.og-scope'),/unvalidated/i);

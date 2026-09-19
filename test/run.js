@@ -8,4 +8,5 @@ import './lab-materials.test.js';
 import './organic-guide.test.js';
 import './electro.test.js';
 import './electro-runner.test.js';
+import './mineral.test.js';
 import './server.test.js';

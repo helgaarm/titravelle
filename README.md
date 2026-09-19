@@ -1,6 +1,6 @@
 # Titravelle
 
-A local virtual chemistry laboratory with a shared chemical shelf and equipment, five aqueous investigations, an SOI-18 organic research scenario, three electrochemistry investigations, explicit instrument readings, and a scientific notebook.
+A local virtual chemistry laboratory with a shared chemical shelf and equipment, five aqueous investigations, an SOI-18 organic research scenario, three electrochemistry investigations, five mineral-analysis guides, explicit instrument readings, and a scientific notebook.
 
 ## Run
 
@@ -24,11 +24,11 @@ This implements section 26 of the supplied brief. Five experiment definitions us
 
 ## Using the laboratory
 
-**One shared laboratory.** The Workbench includes **Vessel bench, Preparation, Reactor, Work-up, Analysis, Materials & controls, Organic report, and Electrochemistry**. Use these buttons or **Open equipment** to access glassware, meters, the nitrogen/vacuum apparatus, chromatography, product QC, materials instruments and electrochemical cells without starting an experiment. Switching equipment preserves samples, readings, your draft and the ventilation setting. The last work area reopens on reload.
+**One shared laboratory.** The Workbench includes **Vessel bench, Preparation, Reactor, Work-up, Analysis, Materials & controls, Organic report, Electrochemistry, and Mineral analysis**. Use these buttons or **Open equipment** to access glassware, meters, the nitrogen/vacuum apparatus, chromatography, product QC, materials instruments, electrochemical cells and mineral-screening tools without starting an experiment. Switching equipment preserves samples, readings, your draft and the ventilation setting. The last work area reopens on reload.
 
 Use **Restart without experiment** beside **Equipment & instruments**, on the Experiments page, or in the **New run** dialog to leave an active experiment and open a fresh lab in free exploration. Confirming resets all working samples, readings and the working draft; saved notebook snapshots, custom studies and the ventilation setting are kept. No experiment is selected, and all equipment remains available. **Undo last operation** can restore the preceding run during the session. Starting an experiment from free exploration opens its guide again.
 
-The shared chemical shelf contains **63 stocks and reference entries**, including **12 common dry materials**: sodium chloride, sodium bicarbonate, sucrose, citric acid, chalk, starch, silica sand, iron filings, magnesium ribbon, zinc granules, activated carbon and copper(II) sulfate pentahydrate. The **Electrochemistry** collection adds supporting salts, dilute sulfuric acid and 11 electrode surfaces. Search by name/formula, filter by collection and category, or scroll the bounded list.
+The shared chemical shelf contains **74 stocks and reference entries**, including **12 common dry materials**: sodium chloride, sodium bicarbonate, sucrose, citric acid, chalk, starch, silica sand, iron filings, magnesium ribbon, zinc granules, activated carbon and copper(II) sulfate pentahydrate. The **Electrochemistry** collection adds supporting salts, dilute sulfuric acid and 11 electrode surfaces. **Mineral analysis & standards** contains the unknown concentrate, analytical reagents and Ag/Au/Pt/REE controls. Search by name/formula, filter by collection and category, or scroll the bounded list.
 
 **Organic and dry materials can be used directly in standard vessels.** Selecting one keeps the current work area open. In **Use in a vessel**, choose the receiving vessel, enter a weighed amount in grams and an assigned occupied volume, choose solid/liquid form and press **Weigh & add**. Assigned volume is an explicit input used for capacity and drawing, not a density, dissolution-volume or contraction prediction; defaults are placeholders. Nitrogen uses a separate gas-flow toggle and adds no fictional retained mass. Stock forms, reference materials and comparison samples remain separately identified.
 
@@ -72,9 +72,23 @@ The four electrochemistry view buttons stay at the top while you scroll, togethe
 
 **Measurements & calculations** shows competing half reactions, Nernst potentials, polarization and resistance, Faraday mass/gas comparisons, recorded measurements and time-series graphs. **Advanced studies** provides independent polarization/Tafel, Butler–Volmer and finite-inventory cyclic-voltammetry models. Save a notebook snapshot or export CSV, JSON, Markdown and standalone HTML with graphs from **Report**. These use assumed kinetics and synthetic instrument readings; scope, formulas, validation and limitations are documented in [ELECTROCHEMISTRY_MODEL.md](ELECTROCHEMISTRY_MODEL.md).
 
+## Mineral concentrate investigations
+
+Open **Experiments** and choose **Read the concentrate: four claims**, or begin with the silver, gold, platinum or rare-earth guide. The same equipment is available under **Workbench > Mineral analysis**.
+
+1. Label and split the unknown; preserve Original and E. Optionally enable uneven Au/Pt particle distribution.
+2. Follow the next-step advice for A, B, C and D. Digestion steps require the shared virtual fume hood.
+3. Review each recorded appearance, dissolution, gas, liquid, solid, residue and control result. Write your interpretation and save before continuing.
+4. Compare the unknown with the blank and positive control; use the matrix spike to explore suppression. Record a confidence and reason for each route.
+5. In **Report & confirmation**, submit a tracked portion to a virtual instrument. Compare the instrument limits and your claims with the separately revealed model composition.
+
+The tools include labelled fractions, filtration, contained digestion modules, microscope, radiation screening, test vials, an uncalibrated Arsenazo III absorbance comparison, XRF, ICP-OES, ICP-MS, fire assay with a finish, and SEM-EDS. Observations and reports save to the shared notebook and export as Markdown/CSV. No colour is converted to a grade. Chemical hazards and all numerical assumptions are explained in [MINERAL_MODEL.md](MINERAL_MODEL.md). These are virtual teaching modules, not hazardous real-world operating recipes.
+
 ## Scientific scope and originality
 
-[SCIENTIFIC_MODEL.md](SCIENTIFIC_MODEL.md) documents equations, numerical constants, error models, assumptions, numerical checks, and unimplemented modules. The copper model covers chloride/sulfate complexes, hydrolysis, and Cu(OH)₂, but withholds predictions for competing copper mixtures with acetate, carbonate, or silver. Wet copper filtration and weighing are supported; copper-residue drying is not. Unsupported silver combinations also withhold predictions. This is not a universal reaction solver. Activity corrections, full kinetics, redox/electrochemistry, alternative copper minerals, distillation, extraction, spectroscopy, and broader unknown-analysis modules remain future work.
+The general vessel solver does not discover arbitrary reactions. Electrochemistry and mineral screening use separately documented equipment models with their own assumptions.
+
+[SCIENTIFIC_MODEL.md](SCIENTIFIC_MODEL.md) documents equations, numerical constants, error models, assumptions, numerical checks, and unimplemented modules. The copper model covers chloride/sulfate complexes, hydrolysis, and Cu(OH)₂, but withholds predictions for competing copper mixtures with acetate, carbonate, or silver. Wet copper filtration and weighing are supported; copper-residue drying is not. Unsupported silver combinations also withhold predictions. This is not a universal reaction solver. Activity corrections, full kinetics, arbitrary redox, alternative copper minerals and general separation/spectroscopy remain outside the vessel solver. Specialized organic, electrochemical and mineral equipment models have narrower documented scopes.
 
 The interface, lesson text, diagrams, and code were authored for this project with AI assistance. No commercial kit pages, illustrations, manuals, or branded layouts are bundled. See [ORIGINALITY.md](ORIGINALITY.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance and review limits. Asset checks do not establish legal clearance.
 
@@ -97,7 +111,7 @@ npm run check:provenance
 npm run test:browser
 ```
 
-The first three commands perform syntax, numerical/state and HTTP security regression, and asset/dependency checks. Browser tests require the running server and a separately installed Chromium-compatible browser (`BROWSER_PATH` can specify its executable). They use an isolated headless profile and cover aqueous, organic, and electrochemistry workflows, graphing, exports, modes, notebook preservation, equation prediction, and application navigation. Screenshots and results are written under ignored `artifacts/`. The tests check 320px/390px layouts and require no application requests to third-party origins.
+The first three commands perform syntax, numerical/state and HTTP security regression, and asset/dependency checks. Browser tests require the running server and a separately installed Chromium-compatible browser (`BROWSER_PATH` can specify its executable). They use an isolated headless profile and cover aqueous, organic, electrochemistry and mineral-analysis workflows, graphing, exports, modes, notebook preservation, equation prediction, and application navigation. Screenshots and results are written under ignored `artifacts/`. The tests check 320px/390px layouts and require no application requests to third-party origins.
 
 ## Modules
 
