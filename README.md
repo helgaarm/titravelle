@@ -56,7 +56,7 @@ The SOI-18 workspace includes editable feed/catalyst/operating conditions and ex
 - Write an objective, hypothesis, procedure, observations, calculations, equations, conclusion, and sources of error. A **notebook snapshot** attaches the recorded operations and readings; later edits do not change that snapshot. Conclusions remain your own writing.
 - Graphs show recorded pH or temperature measurements for the selected vessel's current trial. Emptying a vessel starts another trial without deleting earlier readings. Export all readings as CSV, including trial identifiers, uncertainty, and instrument notes. JSON notebook export includes snapshots and the current draft/readings.
 - **Undo** restores the previous bench operation or run, while keeping saved snapshots. It is limited to the current page session. Starting a new run asks before resetting both the aqueous vessels and organic reactor, readings and working draft. Switching equipment requires no reset. Organic batch precautions remain visible when returning to the aqueous bench.
-- Guided mode shows instructions and optional discussion. Student mode removes those prompts. Free exploration changes the objective to your own question. Assessment hides guidance, conceptual contents, equations, calculation feedback, and answer tools. Professor mode can reveal the current unknown and create/edit structured JSON study definitions using the existing chemistry rules. These are local learning modes, not a secure exam or authenticated teacher system.
+- On the **Vessel bench**, Guided mode shows instructions and optional discussion; Student removes those prompts; Assessment hides guidance, conceptual contents, equations, calculation feedback and answer tools. Professor can reveal the aqueous unknown and create/edit structured JSON study definitions using existing chemistry rules. Free exploration changes the objective to your own question and leaves equipment available. **Specialized equipment currently has different scope:** organic tools use an open research view; electrochemistry shows preset guidance in Guided mode but retains analytical results in other modes; mineral analysis retains step advice, equations and model feedback in every mode, with instrument/reveal access gated by completed route conclusions. Consistent presentation is proposed in [ADR-0004](docs/adr/0004-learning-mode-contract.md). These are local learning modes, not a secure exam or authenticated teacher system.
 
 Bench data and notebooks persist in `titravelle-science-lab-v2` in this browser. Export important records; storage can be unavailable or reach its browser quota. Each collection supports 100 snapshots; the working run retains the latest 1,000 operations and 1,000 measurements.
 
@@ -83,6 +83,8 @@ Open **Experiments** and choose **Read the concentrate: four claims**, or begin 
 5. In **Report & confirmation**, submit a tracked portion to a virtual instrument. Compare the instrument limits and your claims with the separately revealed model composition.
 
 The tools include labelled fractions, filtration, contained digestion modules, microscope, radiation screening, test vials, an uncalibrated Arsenazo III absorbance comparison, XRF, ICP-OES, ICP-MS, fire assay with a finish, and SEM-EDS. Observations and reports save to the shared notebook and export as Markdown/CSV. No colour is converted to a grade. Chemical hazards and all numerical assumptions are explained in [MINERAL_MODEL.md](MINERAL_MODEL.md). These are virtual teaching modules, not hazardous real-world operating recipes.
+
+**Known draft limitation:** submit a route conclusion before switching views; its unfinished confidence/reason form is currently lost on redraw. Pending observation records and submitted conclusions persist. [ADR-0005](docs/adr/0005-mineral-conclusion-drafts.md) proposes per-route conclusion drafts; that fix is not implemented yet.
 
 ## Scientific scope and originality
 
@@ -115,6 +117,8 @@ The first three commands perform syntax, numerical/state and HTTP security regre
 
 ## Modules
 
+The [architecture decision records](docs/adr/README.md) explain the shared workbench, model boundaries and mineral evidence workflow, and distinguish implemented decisions from proposed review follow-ups.
+
 | File | Responsibility |
 | --- | --- |
 | `src/main.js` | Entry point for the laboratory |
@@ -129,6 +133,12 @@ The first three commands perform syntax, numerical/state and HTTP security regre
 | `src/organic-engine.js` | Sequential organic reaction states, apparatus, mass ledger, qualification, isolation and persistence checks |
 | `src/organic-analysis.js` | Synthetic analytical records, adduct calculations, material/control scenarios, statistics and reports |
 | `src/organic-ui.js`, `src/organic.css` | Organic workflow, original reactor/SVG plots, analytical tables and report controls |
+| `src/organic-guide.js` | SOI-18 guide progress derived from saved batch evidence |
+| `src/electro-data.js`, `src/electro-model.js`, `src/electro-engine.js` | Cell definitions, supported electrochemical calculations, operations and state validation |
+| `src/electro-analysis.js`, `src/electro-runner.js` | Electrochemical analysis/reports and cancellable scheduled simulation advancement |
+| `src/electro-ui.js`, `src/electro-scene.js`, `src/electro.css` | Integrated circuit controls, original cell drawings, measurements and report views |
+| `src/mineral-data.js`, `src/mineral-engine.js` | Mineral routes, reagents, assumptions, independent target inventories, controls and instrument gates |
+| `src/mineral-ui.js`, `src/mineral.css` | Step guidance, observations, original test-vial/grain drawings, conclusions and comparison reports |
 | `src/lab-analysis.js` | Unit-aware teaching calculations and atom/charge equation checking |
 | `src/lab-reactions.js` | Mixture-aware reaction records, balanced equation forms, current equilibria, and notebook reports |
 | `src/lab-glassware.js` | Original glassware, apparatus, menisci, graduations, and matching equipment thumbnails |
