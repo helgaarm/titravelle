@@ -4,6 +4,23 @@ const rng=s=>{s.seed=(1664525*s.seed+1013904223)>>>0;return s.seed/4294967296;};
 const total=(m,id)=>Object.values(m).reduce((sum,row)=>sum+row[id],0);
 const sumREE=x=>['Ce','La','Nd','Y'].reduce((sum,id)=>sum+x[id],0);
 const text=x=>typeof x==='string'&&x.trim().length>0&&x.length<=3000;
+const emptyConclusionDraft=()=>({confidence:'',reason:'',compared:false});
+const validConclusionDraft=d=>d!==null&&typeof d==='object'&&!Array.isArray(d)&&Object.keys(d).length===3&&Object.keys(d).every(k=>['confidence','reason','compared'].includes(k))&&(d.confidence===''||CONFIDENCE.includes(d.confidence))&&typeof d.reason==='string'&&d.reason.length<=3000&&typeof d.compared==='boolean';
+export function mineralPresentation(mode='guided'){
+  const assessment=mode==='assessment';
+  return {guidance:mode==='guided',equations:!assessment,feedback:!assessment,confirmation:!assessment,truth:!assessment};
+}
+export function mineralConclusionDraft(s,route=s.route){
+  if(!Object.hasOwn(ROUTES,route))throw Error('Choose one of the four analytical aliquots.');
+  return {...(s.runs[route].conclusionDraft??emptyConclusionDraft())};
+}
+export function editMineralConclusionDraft(s,route,patch){
+  if(!Object.hasOwn(ROUTES,route))throw Error('Choose one of the four analytical aliquots.');
+  if(s.runs[route].conclusion)throw Error('This route already has a recorded conclusion.');
+  const draft={...mineralConclusionDraft(s,route),...patch};
+  if(!validConclusionDraft(draft))throw Error('Use an available confidence, a reasoning draft up to 3000 characters, and a control-comparison checkbox.');
+  return {...s,runs:{...s.runs,[route]:{...s.runs[route],conclusionDraft:draft}}};
+}
 export function createMineral(seed=17,route='A'){
   const s={version:1,seed:seed>>>0,code:`MC-${seed>>>0}`,time:0,route:Object.hasOwn(ROUTES,route)?route:'A',split:false,nugget:false,portions:{},runs:{},journal:[],pending:null,instruments:[],revealed:false};
   const weights=MINERALS.map((name,i)=>({name,weight:i<9?.2+rng(s):rng(s)<.5?0:.002+rng(s)*.18}));
@@ -13,7 +30,7 @@ export function createMineral(seed=17,route='A'){
   const pick=levels=>levels[Math.floor(rng(s)*levels.length)];
   const ppm={Ag:pick([0,0,.2,3,30,300]),Au:pick([0,0,.05,.5,5,50]),Pt:pick([0,0,.05,.5,5,200,1500]),Ce:(part('monazite')*.28+part('allanite')*.08)*1e6,La:(part('monazite')*.14+part('allanite')*.04)*1e6,Nd:(part('monazite')*.12+part('allanite')*.03)*1e6,Y:part('xenotime')*.45e6};
   s.hidden={ppm,minerals,radioactive:rng(s)<.55,otherRadioactive:rng(s)<.15,encapsulation:.15+rng(s)*.75,matrix:.2+rng(s)*.8};
-  for(const id of Object.keys(ROUTES))s.runs[id]={index:0,assays:{},skipped:[],exam:null,radiation:null,conclusion:null,learner:null,conditions:{blank:rng(s)<.12?.6:0,reagent:rng(s)<.10?.12:1,suppression:rng(s)<.18?.22:1},stage:'Untreated concentrate'};
+  for(const id of Object.keys(ROUTES))s.runs[id]={index:0,assays:{},skipped:[],exam:null,radiation:null,conclusion:null,learner:null,conclusionDraft:emptyConclusionDraft(),conditions:{blank:rng(s)<.12?.6:0,reagent:rng(s)<.10?.12:1,suppression:rng(s)<.18?.22:1},stage:'Untreated concentrate'};
   return s;
 }
 function divide(s,nugget){
@@ -163,7 +180,8 @@ export function operateMineral(original,action,args={},context={}){
     }else if(action==='conclude'){
       if(r.index!==MINERAL_STEPS[route].length)throw Error('Complete and record this route before assigning a result.');
       if(args.compared!==true||!CONFIDENCE.includes(args.confidence)||!text(args.reason))throw Error('Compare sample and controls, then enter your confidence and reasoning.');
-      r.learner={confidence:args.confidence,reason:args.reason};r.conclusion=mineralConclusion(s,route);
+      if(r.conclusion)throw Error('This route already has a recorded conclusion.');
+      r.learner={confidence:args.confidence,reason:args.reason};r.conclusion=mineralConclusion(s,route);r.conclusionDraft=emptyConclusionDraft();
     }else if(action==='instrument'){
       if(!mineralComplete(s))throw Error('Record conclusions for all four classical routes before revealing instrumental evidence.');
       const method=INSTRUMENTS[args.method];if(!Object.hasOwn(INSTRUMENTS,args.method))throw Error('Choose an available confirmatory instrument.');
@@ -200,14 +218,29 @@ export function mineralComparison(s){
     return {name,route,bulk,aliquot,result:decision.result,confidence:learner.confidence,outcome,reason:bulk>0&&aliquot<bulk*.2?'Sampling contrast: precious-metal particles are unevenly distributed.':learner.confidence==='Not detected'&&aliquot>0?'A detection limit, incomplete extraction or suppression can hide a present target.':positive&&aliquot===0?'A matrix response can resemble the target. Check specificity and controls.':'Qualitative evidence does not establish a grade; compare the instrument scope and reporting limits.'};
   });
 }
-export function mineralReport(s){
+export function mineralReport(s,{mode='guided',includeDrafts=true}={}){
+  const presentation=mineralPresentation(mode);
   const lines=['# Mineral concentrate investigation',`Sample ${s.code}. Virtual teaching observations; no real analytical result.`, 'No colour-to-concentration calibration was performed.','', '| Element/group | Primary test | Confirmation | Result | Confidence |','| --- | --- | --- | --- | --- |'];
   const labels={A:['Ag','Nitric extraction / chloride','Thiosulfate'],B:['Au','Chloride extract','Sn(II) colour / controls'],C:['Pt','Chloride extract / NH4Cl','Precipitation behaviour / controls'],D:['REE','Mineral / digestion screen','Oxalate / optional Arsenazo III']};
-  for(const [id,r] of Object.entries(s.runs)){const c=r.conclusion;lines.push(`| ${labels[id].join(' | ')} | ${c?.result||'Not concluded'} | ${c?.confidence||'Inconclusive'} |`);}
-  for(const [id,r] of Object.entries(s.runs))if(r.conclusion)lines.push('',`${id}: ${r.conclusion.reason}`,`Analyst (${r.learner.confidence}): ${r.learner.reason}`);
-  lines.push('','## Recorded observations');for(const row of s.journal)lines.push('',`${row.route} · ${row.title} · ${row.reagent} · ${row.time} model s (${row.duration} model s duration)`,row.equation,...OBS_FIELDS.map(([id,label])=>`${label}: ${row.draft[id]}`));
-  if(s.revealed){lines.push('','## Simulator ground truth (separate from instrument readings)',...TARGETS.map(id=>`${id}: ${s.hidden.ppm[id].toPrecision(5)} mg/kg in the original bulk model.`),...mineralComparison(s).map(r=>`${r.name}: ${r.outcome}. ${r.reason}`));for(const run of s.instruments)lines.push('',`${INSTRUMENTS[run.method].name} · ${run.source} / ${run.fraction}: ${INSTRUMENTS[run.method].note}`,run.method==='sem'?'Selected-grain observations; values are not bulk grades.':'Values use original-sample-equivalent mg/kg; solution/residue results describe only the recovered fraction.',...run.readings.map(r=>`${r.element}: ${r.limit===null?'outside method':r.value===null?'below illustrative reporting limit':run.method==='sem'?'detected in selected grain':r.value+' mg/kg'}; limit ${r.limit??'not applicable'}.`));}
+  for(const [id,r] of Object.entries(s.runs)){const c=r.conclusion;lines.push(`| ${labels[id].join(' | ')} | ${presentation.feedback?c?.result||'Not concluded':r.learner?'Learner conclusion recorded':'Not concluded'} | ${(presentation.feedback?c?.confidence:r.learner?.confidence)||'Not recorded'} |`);}
+  for(const [id,r] of Object.entries(s.runs))if(r.conclusion){if(presentation.feedback)lines.push('',`${id}: ${r.conclusion.reason}`);lines.push('',`${id} analyst (${r.learner.confidence}): ${r.learner.reason}`);}
+  if(includeDrafts){
+    const drafts=Object.entries(s.runs).filter(([id,r])=>!r.conclusion&&(r.conclusionDraft?.reason||r.conclusionDraft?.confidence));
+    if(drafts.length)lines.push('','## Unsubmitted conclusion drafts','Working notes only; these do not complete a route.',...drafts.map(([id,r])=>`${id}: ${r.conclusionDraft.confidence||'Confidence not chosen'} — ${r.conclusionDraft.reason}`));
+  }
+  if(!presentation.feedback)lines.push('','Assessment presentation: model interpretation, equations and simulator answers are withheld. Recorded observations and learner writing remain available.');
+  lines.push('','## Recorded observations');for(const row of s.journal){lines.push('',`${row.route} · ${row.title} · ${row.reagent} · ${row.time} model s (${row.duration} model s duration)`);if(presentation.equations&&row.equation)lines.push(row.equation);lines.push(...OBS_FIELDS.map(([id,label])=>`${label}: ${row.draft[id]}`));}
+  if(s.revealed&&presentation.truth)lines.push('','## Simulator ground truth (separate from instrument readings)',...TARGETS.map(id=>`${id}: ${s.hidden.ppm[id].toPrecision(5)} mg/kg in the original bulk model.`),...mineralComparison(s).map(r=>`${r.name}: ${r.outcome}. ${r.reason}`));
+  for(const run of s.instruments)lines.push('',`${INSTRUMENTS[run.method].name} · ${run.source} / ${run.fraction}: ${INSTRUMENTS[run.method].note}`,run.method==='sem'?'Selected-grain observations; values are not bulk grades.':'Values use original-sample-equivalent mg/kg; solution/residue results describe only the recovered fraction.',...run.readings.map(r=>`${r.element}: ${r.limit===null?'outside method':r.value===null?'below illustrative reporting limit':run.method==='sem'?'detected in selected grain':r.value+' mg/kg'}; limit ${r.limit??'not applicable'}.`));
   return lines.join('\n');
+}
+// Snapshots are immutable. Prefer their assessment-safe copy in Assessment;
+// older snapshots have no such copy and can be opened in another learning mode.
+export function mineralSnapshotReport(note,mode='guided'){
+  return mineralPresentation(mode).feedback?note.mineralReport:note.mineralAssessmentReport??null;
+}
+export function mineralNotebookNotes(notes,mode='guided'){
+  return notes.map(note=>!note.mineralReport||mineralPresentation(mode).feedback?note:{...note,mineralReport:mineralSnapshotReport(note,mode)??'This older mineral report contains model feedback. Open it in another learning mode.'});
 }
 export function mineralCSV(s){
   const cell=x=>'"'+String(x??'').replace(/^[\t\r\n ]*[=+@-]/,"'$&").replaceAll('"','""')+'"';
@@ -221,6 +254,7 @@ export function validMineral(s){
     if(!TARGETS.every(id=>finite(s.hidden.ppm[id]))||!Array.isArray(s.hidden.minerals)||s.hidden.minerals.length!==12||!s.hidden.minerals.every(r=>MINERALS.includes(r.name)&&finite(r.fraction)&&r.fraction<=1)||!finite(s.hidden.encapsulation)||s.hidden.encapsulation>1||!finite(s.hidden.matrix)||s.hidden.matrix>1||typeof s.hidden.radioactive!=='boolean'||typeof s.hidden.otherRadioactive!=='boolean')return false;
     if(Object.keys(s.runs).join(',')!=='A,B,C,D')return false;
     for(const [id,r] of Object.entries(s.runs)){
+      if(r.conclusionDraft!==undefined&&!validConclusionDraft(r.conclusionDraft))return false;
       if(!Number.isInteger(r.index)||r.index<0||r.index>MINERAL_STEPS[id].length||!Array.isArray(r.skipped)||!r.skipped.every(x=>MINERAL_STEPS[id].some(st=>st.id===x&&st.optional))||!text(r.stage))return false;
       if(!['blank','reagent','suppression'].every(k=>finite(r.conditions[k])&&r.conditions[k]<=1))return false;
       if(r.exam!==null&&(!Array.isArray(r.exam)||r.exam.length!==3||!r.exam.every(text)))return false;

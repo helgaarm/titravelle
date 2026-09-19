@@ -29,7 +29,7 @@ Represent hazardous digestion and decomposition as contained virtual operations 
 
 Each new operation must preserve target inventory and sample identity, retain its observation history, enforce relevant sequence/hood gates and label analytical limitations. Controls can invalidate a result. Incomplete dissolution, interferences and uneven sampling can disagree with the hidden bulk composition without constituting an engine failure.
 
-The model conserves selected targets, not every matrix atom, reagent or solvent. It cannot certify the composition or safety of a real sample. Interface blindness is educational only because the hidden recipe is stored locally. Learning-mode behavior and unfinished conclusion drafts are separate open issues in [ADR-0004](0004-learning-mode-contract.md) and [ADR-0005](0005-mineral-conclusion-drafts.md).
+The model conserves selected targets, not every matrix atom, reagent or solvent. It cannot certify the composition or safety of a real sample. Interface blindness is educational only because the hidden recipe is stored locally. [ADR-0004](0004-learning-mode-contract.md) defines the implemented learning-mode presentation; [ADR-0005](0005-mineral-conclusion-drafts.md) defines unfinished conclusion persistence.
 
 ## Evidence and verification
 
