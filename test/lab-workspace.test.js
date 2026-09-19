@@ -7,8 +7,8 @@ import { filterShelf, shelfView } from '../src/lab-shelf.js';
 import { benchSafety } from '../src/lab-safety.js';
 
 test('shared inventory distinguishes stock forms and filters across both chemistry areas',()=>{
-  assert.equal(LAB_MATERIALS.length,74);
-  assert.equal(new Set(LAB_MATERIALS.map(r=>r.catalogId)).size,74);
+  assert.equal(LAB_MATERIALS.length,76);
+  assert.equal(new Set(LAB_MATERIALS.map(r=>r.catalogId)).size,76);
   assert.equal(filterShelf(LAB_MATERIALS,'H2O').length,3); // two water entries and the hydrated copper salt
   assert.equal(filterShelf(LAB_MATERIALS,'H2O','all','aqueous')[0].catalogId,'aqueous:water');
   assert.equal(filterShelf(LAB_MATERIALS,'H2O','all','organic')[0].catalogId,'organic:water');

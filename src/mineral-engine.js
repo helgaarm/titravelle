@@ -1,4 +1,5 @@
 import {TARGETS,ROUTES,LANES,LANE_NAMES,OBS_FIELDS,CONFIDENCE,MINERAL_STEPS,MINERALS,INSTRUMENTS} from './mineral-data.js';
+import {MINERAL_PORTIONS,MINERAL_APPARATUS,mineralProtocol,emptyMineralBench,emptyPreparation,validMineralBench,mineralReagentName} from './mineral-protocol.js';
 const copy=x=>structuredClone(x), zero=()=>Object.fromEntries(TARGETS.map(id=>[id,0]));
 const rng=s=>{s.seed=(1664525*s.seed+1013904223)>>>0;return s.seed/4294967296;};
 const total=(m,id)=>Object.values(m).reduce((sum,row)=>sum+row[id],0);
@@ -22,7 +23,7 @@ export function editMineralConclusionDraft(s,route,patch){
   return {...s,runs:{...s.runs,[route]:{...s.runs[route],conclusionDraft:draft}}};
 }
 export function createMineral(seed=17,route='A'){
-  const s={version:1,seed:seed>>>0,code:`MC-${seed>>>0}`,time:0,route:Object.hasOwn(ROUTES,route)?route:'A',split:false,nugget:false,portions:{},runs:{},journal:[],pending:null,instruments:[],revealed:false};
+  const s={version:1,seed:seed>>>0,code:`MC-${seed>>>0}`,time:0,route:Object.hasOwn(ROUTES,route)?route:'A',split:false,nugget:false,portions:{},runs:{},journal:[],pending:null,instruments:[],revealed:false,preparation:emptyPreparation()};
   const weights=MINERALS.map((name,i)=>({name,weight:i<9?.2+rng(s):rng(s)<.5?0:.002+rng(s)*.18}));
   const norm=weights.reduce((a,r)=>a+r.weight,0);
   const minerals=weights.map(r=>({name:r.name,fraction:r.weight/norm}));
@@ -61,29 +62,33 @@ function response(id,value,remaining=0){
   if(id==='thiosulfate'){colour=remaining>=.15?'white':'colourless';precipitate=remaining>=.15?'Residual pale solid':'No visible solid';description=value>=.15?`White cloud decreases; ${remaining>=.15?'some solid remains.':'the test portion becomes clear.'}`:'No convincing dissolution response to compare.';}
   return {signal:Math.min(value,5),score:level,colour,precipitate,description,solid,remaining,...(id==='arsenazo'?{absorbance:Number((.035+Math.min(value,3)*.36).toFixed(3))}:{})};
 }
-function assay(s,route,id,spike){
+function assay(s,route,id,spike,args={}){
   const p=s.portions[route],r=s.runs[route],c=r.conditions,kind=targetFor(route);
   const thresholds={chloride:2,tin:.3,ammonium:120,oxalate:500,arsenazo:300};
   const results={};
   let target=0,matrix=0;
   if(id!=='thiosulfate'){
-    const sample=copy(p.fractions.solution);for(const key of TARGETS)sample[key]*=.1;
-    move(p,'solution','tests',.1);
+    const fraction=args.sampleFraction??.1;
+    const sample=copy(p.fractions.solution);for(const key of TARGETS)sample[key]*=fraction;
+    const lanes=args.controls&&args.controls.spike&&spike?2:1;
+    move(p,'solution','tests',fraction*lanes);
     target=(kind==='REE'?sumREE(sample):sample[kind])*1000/(p.grams*.1)/thresholds[id];
-    matrix=s.hidden.matrix*({chloride:.6,tin:.1,ammonium:.22,oxalate:1.3,arsenazo:.9}[id]);
+    matrix=s.hidden.matrix*({chloride:.6,tin:.1,ammonium:.22,oxalate:1.3,arsenazo:.9}[id])*(fraction/.1);
   }
   for(const lane of LANES){
     if(lane==='spike'&&!spike)continue;
+    if(args.controls&&!args.controls[lane])continue;
     if(id==='thiosulfate'){
       const prior=r.assays.chloride?.[lane];if(!prior)continue;
-      const removed=prior.target*.97*c.reagent,remaining=Math.max(0,prior.signal-removed);
+      const removed=prior.target*.97*c.reagent*(args.effect??1),remaining=Math.max(0,prior.signal-removed);
       results[lane]={...response(id,removed,remaining),target:removed,matrix:remaining};continue;
     }
     const isMatrix=['sample','spike'].includes(lane),amount=lane==='positive'?2:lane==='blank'?0:target+(lane==='spike'?2:0);
-    const reacted=amount*c.reagent*(isMatrix?c.suppression:1);
+    const reacted=amount*c.reagent*(isMatrix?c.suppression:1)*(args.effect??1);
     const interferent=isMatrix?matrix:0;
     results[lane]={...response(id,reacted+interferent+c.blank),target:reacted,matrix:interferent+c.blank};
   }
+  if(id==='arsenazo'&&args.zeroed&&results.blank){const baseline=results.blank.absorbance;for(const v of Object.values(results)){v.absorbance=Number((v.absorbance-baseline).toFixed(3));v.zeroed=true;}}
   r.assays[id]=results;return results;
 }
 function observe(s,route,step,skip,args){
@@ -91,8 +96,9 @@ function observe(s,route,step,skip,args){
   const o={before:r.stage,dissolution:'No dissolution operation.',gas:'No gas evolution represented.',solution:'No liquid colour change.',precipitate:'None visible.',residue:'Fractions remain labelled and retained.',controls:'Preparation/physical observation; chemical controls follow.',interpretation:''};
   if(skip){o.controls='Optional stage omitted.';o.solution='Not measured.';r.skipped.push(step.id);return o;}
   const id=step.id;
+  const extraction=recoveries=>Object.fromEntries(Object.entries(recoveries).map(([key,value])=>[key,value*(args.effect??1)]));
   if(id==='nitric'){
-    move(p,'solid','solution',{Ag:.7+.25*s.hidden.encapsulation,Ce:.015,La:.015,Nd:.015,Y:.01});
+    move(p,'solid','solution',extraction({Ag:.7+.25*s.hidden.encapsulation,Ce:.015,La:.015,Nd:.015,Y:.01}));
     o.dissolution='Some acid-soluble material dissolves; resistant grains remain.';o.gas='Nitrogen oxides represented; NO can oxidize to brown NO₂ in air. Gas colour is not an elemental identification.';
     o.solution='Pale blue/green or yellow from the matrix.';o.residue='Mixed resistant grains; no mineral identity established.';r.stage='Nitric-treated slurry';
   }else if(id==='nitric-probe'||id==='hcl-probe'){
@@ -103,7 +109,7 @@ function observe(s,route,step,skip,args){
     move(p,'solution','retained',1);o.dissolution='No additional target extraction assumed.';o.solution='Nitric filtrate and washings archived as B-N.';o.residue='Washed nitric-resistant B-R retained.';r.stage='Washed nitric-resistant solid';
   }else if(id==='chloride-digest'){
     const recovery=s.hidden.encapsulation;
-    move(p,'solid','solution',{Au:recovery,Pt:recovery*.65,Ag:.08,Ce:.03,La:.03,Nd:.03,Y:.02});
+    move(p,'solid','solution',extraction({Au:recovery,Pt:recovery*.65,Ag:.08,Ce:.03,La:.03,Nd:.03,Y:.02}));
     o.dissolution='Part of the accessible metal fraction enters the chloride solution. Encapsulated material may remain.';o.gas='Toxic oxidising-acid fumes represented (including nitrogen oxides/chlorine-related species).';o.solution='Yellow/amber matrix solution; colour is not proof of Au or Pt.';o.residue='Refractory minerals and unrecovered target material may remain.';r.stage='Chloride digest with retained mineral residue';
   }else if(id==='filter'){
     o.solution=route==='A'?'Diluted clear A-F filtrate retained.':'Clear chloride test solution retained; matrix colour may persist.';
@@ -113,16 +119,17 @@ function observe(s,route,step,skip,args){
     o.before='Fine, dried, homogenised, non-magnetic heavy-mineral concentrate.';o.residue=r.exam.join(' ');o.controls='Compare several grains; microscope colour and estimated density are ambiguous.';r.stage='Mineral textures observed; identities unresolved';
   }else if(id==='radiation'){
     const high=(s.hidden.radioactive&&s.hidden.ppm.Ce>0)||s.hidden.otherRadioactive;
-    r.radiation={background:24,sample:high?63+Math.floor(rng(s)*42):20+Math.floor(rng(s)*10),seconds:60};
-    o.controls=`Virtual 60 s count: background ${r.radiation.background}; sample ${r.radiation.sample}. Not a dose-rate or safety measurement.`;o.residue='Unchanged. Radioactivity does not identify a mineral or REE.';
+    const seconds=args.duration??60,scale=seconds/60;
+    r.radiation={background:Math.round(24*scale),sample:Math.round((high?63+Math.floor(rng(s)*42):20+Math.floor(rng(s)*10))*scale),seconds};
+    o.controls=`Virtual ${seconds} s count: background ${r.radiation.background}; sample ${r.radiation.sample}. Not a dose-rate or safety measurement.`;o.residue='Unchanged. Radioactivity does not identify a mineral or REE.';
   }else if(id==='ree-digest'){
-    move(p,'solid','solution',{Ce:.55+s.hidden.encapsulation*.4,La:.55+s.hidden.encapsulation*.4,Nd:.55+s.hidden.encapsulation*.4,Y:.45+s.hidden.encapsulation*.45,Ag:.1,Au:0,Pt:0});
+    move(p,'solid','solution',extraction({Ce:.55+s.hidden.encapsulation*.4,La:.55+s.hidden.encapsulation*.4,Nd:.55+s.hidden.encapsulation*.4,Y:.45+s.hidden.encapsulation*.45,Ag:.1,Au:0,Pt:0}));
     o.dissolution='Virtual resistant-mineral decomposition is partial to extensive; no total-recovery guarantee.';o.solution='Pale matrix-coloured digest; Fe, Al, Ca, Th and phosphate may accompany target ions.';o.residue='Any undecomposed grains are retained.';r.stage='Conditioned mineral digest and retained residue';
   }else if(id==='light'){
     const primary=r.assays.chloride.sample;
     o.precipitate=primary.target>=.15?'The retained white-solid portion slowly becomes grey/violet.':'No convincing darkening of a retained white solid.';o.controls='Separate illustrative retained portion; not the thiosulfate-treated portion.';
   }else{
-    const results=assay(s,route,id,args.spike!==false);
+    const results=assay(s,route,id,args.spike!==false,args);
     o.solution=results.sample.description;o.precipitate=results.sample.precipitate;
     o.dissolution=id==='thiosulfate'?results.sample.description:'Test-portion reactions; extraction recovery is unchanged.';
     o.controls=Object.entries(results).map(([lane,result])=>`${LANE_NAMES[lane]}: ${result.description}`).join(' ');
@@ -157,9 +164,11 @@ export function operateMineral(original,action,args={},context={}){
   const s=copy(original),route=args.route||s.route;
   if(!Object.hasOwn(ROUTES,route))throw Error('Choose one of the four analytical aliquots.');
   if(action==='select'){s.route=route;return s;}
+  if(action.startsWith('bench-'))return operateMineralWorkbench(original,action,args,context);
   if(s.pending&&action!=='record')throw Error('Record the current observation before another operation.');
   if(action==='split'){
     if(s.split)throw Error('This concentrate has already been split. Start a new run for another unknown.');
+    if(args.fromBench&&(!s.preparation?.mixed||s.preparation.weighed.length!==6))throw Error('Homogenise, tare and weigh all six labelled portions before opening the analytical routes.');
     divide(s,args.nugget===true);
     s.pending={route:'Original',step:'split',title:'Preserve and divide the concentrate',reagent:'Labelled containers; representative splitter',time:0,duration:0,equation:'',draft:{before:'Processed non-magnetic heavy-mineral concentrate.',dissolution:'None.',gas:'None.',solution:'No solution.',precipitate:'None.',residue:'Original and E preserved; independent A, B, C and D aliquots labelled.',controls:'Untreated reference retained. No chemical test yet.',interpretation:''}};
   }else if(action==='record'){
@@ -173,9 +182,11 @@ export function operateMineral(original,action,args={},context={}){
     const r=s.runs[route];
     if(action==='step'||action==='skip'){
       const st=MINERAL_STEPS[route][r.index];if(!st)throw Error('This route is complete. Compare the controls and record your conclusion.');
+      if(args.effect!==undefined&&(!Number.isFinite(args.effect)||args.effect<0||args.effect>1)||args.sampleFraction!==undefined&&![.05,.1,.2].includes(args.sampleFraction)||args.duration!==undefined&&(!Number.isFinite(args.duration)||args.duration<=0||args.duration>180))throw Error('Choose supported model treatment settings.');
+      if(args.controls&&(!args.controls.sample||Object.keys(args.controls).some(k=>!LANES.includes(k)||typeof args.controls[k]!=='boolean')))throw Error('Prepare a sample vial and supported controls.');
       if(action==='skip'&&!st.optional)throw Error('This stage is required for the analytical sequence.');
       if(action==='step'&&st.hood&&context.ventilationOn!==true)throw Error('Turn on the shared simulated fume hood before this contained virtual operation.');
-      const draft=observe(s,route,st,action==='skip',args),duration=action==='skip'?0:st.hood?90:30;s.time+=duration;
+      const draft=observe(s,route,st,action==='skip',args),duration=action==='skip'?0:args.duration??(st.hood?90:30);s.time+=duration;
       s.pending={route,step:st.id,title:st.title,reagent:st.reagent,time:s.time,duration,equation:st.equation,draft};r.index++;r.conclusion=null;r.learner=null;
     }else if(action==='conclude'){
       if(r.index!==MINERAL_STEPS[route].length)throw Error('Complete and record this route before assigning a result.');
@@ -208,6 +219,81 @@ export function operateMineral(original,action,args={},context={}){
   }
   return s;
 }
+export function operateMineralWorkbench(original,action,args={},context={}){
+  const s=copy(original),route=args.route||s.route;
+  if(!Object.hasOwn(ROUTES,route))throw Error('Choose an analytical aliquot.');
+  if(s.pending)throw Error('Record the observed result before setting up another operation.');
+  if(['bench-homogenise','bench-tare','bench-weigh','bench-nugget'].includes(action)){
+    if(s.split)throw Error('The reference portions have already been divided.');
+    const prep=s.preparation??=emptyPreparation();
+    if(action==='bench-homogenise')prep.mixed=true;
+    if(action==='bench-tare')prep.tared=true;
+    if(action==='bench-nugget'){if(typeof args.nugget!=='boolean')throw Error('Choose whether to include uneven particles.');s.nugget=args.nugget;}
+    if(action==='bench-weigh'){
+      if(!prep.mixed)throw Error('Homogenise the incoming concentrate before weighing representative portions.');
+      if(!prep.tared)throw Error('Tare the empty container on the balance before weighing this portion.');
+      if(!Object.hasOwn(MINERAL_PORTIONS,args.portion)||prep.weighed.includes(args.portion))throw Error('Choose a labelled container that has not been filled.');
+      prep.weighed.push(args.portion);prep.tared=false;
+    }
+    return s;
+  }
+  if(!s.split)throw Error('Prepare and divide the concentrate before loading analytical equipment.');
+  const r=s.runs[route],plan=mineralProtocol(route,r.index);
+  if(!plan)throw Error('This route is complete. Record your conclusion or start another run.');
+  const b=r.bench?.index===r.index?r.bench:emptyMineralBench(r.index);r.bench=b;
+  const event=message=>{if(b.events.length>=49)throw Error('Clear this apparatus setup before adding more operations.');b.events.push(message);};
+  if(action==='bench-reset'){r.bench=emptyMineralBench(r.index);return s;}
+  if(action==='bench-settings'){
+    if(![.5,1,1.5].includes(args.exposure)||![.05,.1,.2].includes(args.sampleFraction))throw Error('Choose the available model treatment and test-portion settings.');
+    if(b.exposure!==args.exposure)b.background=false;
+    b.exposure=args.exposure;b.sampleFraction=args.sampleFraction;return s;
+  }
+  if(action==='bench-load'){
+    if(b.loaded)throw Error('A fraction is already loaded. Clear this apparatus before replacing it.');
+    if(args.apparatus!==plan.apparatus)throw Error(`Use ${MINERAL_APPARATUS[plan.apparatus]} for this operation.`);
+    if(args.source!==plan.source)throw Error(`Load ${plan.sourceLabel}; keep other aliquots and references separate.`);
+    b.apparatus=args.apparatus;b.source=args.source;b.loaded=true;event(`Loaded ${plan.sourceLabel} into ${MINERAL_APPARATUS[b.apparatus]}.`);return s;
+  }
+  if(!b.loaded)throw Error('Select the apparatus and load the labelled sample fraction first.');
+  const st=MINERAL_STEPS[route][r.index];
+  if(['bench-add','bench-run'].includes(action)&&st.hood&&context.ventilationOn!==true)throw Error('Turn on the shared virtual fume hood before adding this reagent or running the contained treatment.');
+  if(action==='bench-add'){
+    if(!plan.reagent||args.reagent!==plan.reagent)throw Error(plan.reagent?`This operation supports ${mineralReagentName(plan.reagent)}. Choose it from the shared shelf; other combinations are not calculated.`:'This is a physical observation; no reagent is required.');
+    if(!Number.isFinite(args.charge)||args.charge<.25||args.charge>2||b.charge+args.charge>2)throw Error('Add 0.25–2 model charge units, with at most 2 units in this setup. These are not real reagent doses.');
+    b.reagent=args.reagent;b.charge+=args.charge;b.mixed=false;b.background=false;event(`Added ${args.charge} model charge unit(s) of ${mineralReagentName(args.reagent)}.`);
+  }else if(action==='bench-mix'){
+    if(!plan.mix)throw Error('Mixing is not a control on this apparatus.');b.mixed=!b.mixed;event(b.mixed?'Mixed the loaded material and reagent.':'Left the loaded material unmixed.');
+  }else if(action==='bench-filter'){
+    if(plan.apparatus!=='filter')throw Error('Select the filter assembly.');b.filterSeated=true;event('Seated filter paper and labelled both the filtrate receiver and residue container.');
+  }else if(action==='bench-focus'){
+    if(plan.apparatus!=='microscope')throw Error('Select the microscope.');b.focused=true;event('Focused the loaded slide for grain observation.');
+  }else if(action==='bench-background'){
+    if(!['counter','photometer'].includes(plan.apparatus))throw Error('Select a counter or spectrophotometer.');
+    if(plan.apparatus==='photometer'&&(!b.controls.blank||b.charge===0))throw Error('Prepare the reagent blank before zeroing the spectrophotometer.');
+    b.background=true;event(plan.apparatus==='photometer'?'Zeroed the spectrophotometer with the prepared reagent blank.':`Measured the empty-holder background over ${plan.duration*b.exposure} model seconds.`);
+  }else if(action==='bench-control'){
+    if(!plan.assay||!LANES.includes(args.lane))throw Error('Choose a test-vial lane.');
+    if(plan.id==='thiosulfate'&&!r.assays.chloride?.[args.lane])throw Error('No retained chloride-test portion exists for that lane. It cannot be replaced by a fresh control.');
+    if(b.controls[args.lane])throw Error('This vial is already prepared.');
+    b.controls[args.lane]=true;b.mixed=false;event(`Prepared ${LANE_NAMES[args.lane]}${args.lane==='positive'?` using ${plan.standard}`:''}.`);
+  }else if(action==='bench-run'){
+    if(plan.reagent&&b.charge===0)throw Error('Add the supported reagent before running the operation.');
+    if(plan.apparatus==='filter'&&!b.filterSeated)throw Error('Seat the filter and prepare both receiving containers before filtering.');
+    if(plan.apparatus==='microscope'&&!b.focused)throw Error('Focus the slide before capturing microscope fields.');
+    if(plan.apparatus==='counter'&&!b.background)throw Error('Measure the background at this counting interval first.');
+    if(plan.apparatus==='photometer'&&!b.background)throw Error('Zero the spectrophotometer with its prepared reagent blank first.');
+    if(plan.assay&&!b.controls.sample)throw Error('Pipette a sample portion into its test vial first.');
+    const effect=Math.min(1,plan.reagent?b.charge:1)*(plan.mix&&!b.mixed?.35:1)*Math.min(1,b.exposure);
+    const duration=plan.duration*b.exposure;
+    event(`${plan.verb}; ${duration} model seconds${plan.mix?`, ${b.mixed?'mixed':'unmixed'}`:''}.`);
+    b.completed=true;
+    const next=operateMineral(s,'step',{route,effect,duration,sampleFraction:b.sampleFraction,zeroed:plan.apparatus==='photometer'&&b.background,...(plan.assay?{controls:b.controls,spike:b.controls.spike}:{})},context);
+    next.pending.procedure=[...b.events];
+    if(plan.mix)next.pending.draft.dissolution+=` Treatment used ${b.charge} model charge unit(s), ${b.mixed?'mixing':'no mixing'} and ${b.exposure}× reference model exposure. These settings affect the assumed recovery/response, not validated physical kinetics.`;
+    return next;
+  }else throw Error('Unsupported mineral apparatus action.');
+  return s;
+}
 export function mineralComparison(s){
   if(!s.revealed)return [];
   return Object.entries(ROUTES).map(([route,name])=>{
@@ -230,6 +316,7 @@ export function mineralReport(s,{mode='guided',includeDrafts=true}={}){
   }
   if(!presentation.feedback)lines.push('','Assessment presentation: model interpretation, equations and simulator answers are withheld. Recorded observations and learner writing remain available.');
   lines.push('','## Recorded observations');for(const row of s.journal){lines.push('',`${row.route} · ${row.title} · ${row.reagent} · ${row.time} model s (${row.duration} model s duration)`);if(presentation.equations&&row.equation)lines.push(row.equation);lines.push(...OBS_FIELDS.map(([id,label])=>`${label}: ${row.draft[id]}`));}
+  if(s.journal.some(row=>row.procedure?.length)){lines.push('','## Performed apparatus operations');for(const row of s.journal)if(row.procedure?.length)lines.push('',`${row.route} · ${row.title}`,...row.procedure.map(line=>`- ${line}`));}
   if(s.revealed&&presentation.truth)lines.push('','## Simulator ground truth (separate from instrument readings)',...TARGETS.map(id=>`${id}: ${s.hidden.ppm[id].toPrecision(5)} mg/kg in the original bulk model.`),...mineralComparison(s).map(r=>`${r.name}: ${r.outcome}. ${r.reason}`));
   for(const run of s.instruments)lines.push('',`${INSTRUMENTS[run.method].name} · ${run.source} / ${run.fraction}: ${INSTRUMENTS[run.method].note}`,run.method==='sem'?'Selected-grain observations; values are not bulk grades.':'Values use original-sample-equivalent mg/kg; solution/residue results describe only the recovered fraction.',...run.readings.map(r=>`${r.element}: ${r.limit===null?'outside method':r.value===null?'below illustrative reporting limit':run.method==='sem'?'detected in selected grain':r.value+' mg/kg'}; limit ${r.limit??'not applicable'}.`));
   return lines.join('\n');
@@ -253,21 +340,23 @@ export function validMineral(s){
     const finite=x=>Number.isFinite(x)&&x>=0&&x<=1e9;
     if(!TARGETS.every(id=>finite(s.hidden.ppm[id]))||!Array.isArray(s.hidden.minerals)||s.hidden.minerals.length!==12||!s.hidden.minerals.every(r=>MINERALS.includes(r.name)&&finite(r.fraction)&&r.fraction<=1)||!finite(s.hidden.encapsulation)||s.hidden.encapsulation>1||!finite(s.hidden.matrix)||s.hidden.matrix>1||typeof s.hidden.radioactive!=='boolean'||typeof s.hidden.otherRadioactive!=='boolean')return false;
     if(Object.keys(s.runs).join(',')!=='A,B,C,D')return false;
+    if(s.preparation!==undefined&&(!s.preparation||typeof s.preparation.mixed!=='boolean'||typeof s.preparation.tared!=='boolean'||!Array.isArray(s.preparation.weighed)||new Set(s.preparation.weighed).size!==s.preparation.weighed.length||!s.preparation.weighed.every(id=>Object.hasOwn(MINERAL_PORTIONS,id))))return false;
     for(const [id,r] of Object.entries(s.runs)){
       if(r.conclusionDraft!==undefined&&!validConclusionDraft(r.conclusionDraft))return false;
+      if(r.bench!==undefined&&(!validMineralBench(r.bench,id)||r.bench.index>r.index||r.bench.completed&&r.bench.index>=r.index))return false;
       if(!Number.isInteger(r.index)||r.index<0||r.index>MINERAL_STEPS[id].length||!Array.isArray(r.skipped)||!r.skipped.every(x=>MINERAL_STEPS[id].some(st=>st.id===x&&st.optional))||!text(r.stage))return false;
       if(!['blank','reagent','suppression'].every(k=>finite(r.conditions[k])&&r.conditions[k]<=1))return false;
       if(r.exam!==null&&(!Array.isArray(r.exam)||r.exam.length!==3||!r.exam.every(text)))return false;
-      if(r.radiation!==null&&(!finite(r.radiation.background)||!finite(r.radiation.sample)||r.radiation.seconds!==60))return false;
+      if(r.radiation!==null&&(!finite(r.radiation.background)||!finite(r.radiation.sample)||![30,60,90].includes(r.radiation.seconds)))return false;
       if(r.conclusion&&(!CONFIDENCE.includes(r.conclusion.confidence)||!text(r.conclusion.result)||!text(r.conclusion.reason)||!r.learner||!CONFIDENCE.includes(r.learner.confidence)||!text(r.learner.reason)))return false;
-      for(const [assayId,lanes] of Object.entries(r.assays)){if(!MINERAL_STEPS[id].some(st=>st.id===assayId))return false;for(const [lane,v] of Object.entries(lanes)){if(!LANES.includes(lane)||!finite(v.signal)||!Number.isInteger(v.score)||v.score<0||v.score>3||!finite(v.target)||!finite(v.matrix)||!text(v.description)||!text(v.colour)||!text(v.precipitate)||!finite(v.remaining))return false;}}
+      for(const [assayId,lanes] of Object.entries(r.assays)){if(!MINERAL_STEPS[id].some(st=>st.id===assayId))return false;for(const [lane,v] of Object.entries(lanes)){if(!LANES.includes(lane)||!finite(v.signal)||!Number.isInteger(v.score)||v.score<0||v.score>3||!finite(v.target)||!finite(v.matrix)||!text(v.description)||!text(v.colour)||!text(v.precipitate)||!finite(v.remaining)||(v.absorbance!==undefined&&(!Number.isFinite(v.absorbance)||Math.abs(v.absorbance)>2))||(v.zeroed!==undefined&&typeof v.zeroed!=='boolean'))return false;}}
     }
     if(s.split){
       if(Object.keys(s.portions).join(',')!=='Original,A,B,C,D,E')return false;
       for(const p of Object.values(s.portions))if(!finite(p.grams)||p.grams<=0||!finite(p.instrumentWithdrawn)||p.instrumentWithdrawn>p.grams||Object.keys(p.fractions).join(',')!=='solid,solution,retained,tests,probes'||!TARGETS.every(id=>finite(p.initial[id])&&Object.values(p.fractions).every(row=>finite(row[id]))&&Math.abs(total(p.fractions,id)-p.initial[id])<1e-7))return false;
       if(!TARGETS.every(id=>Math.abs(Object.values(s.portions).reduce((sum,p)=>sum+p.initial[id],0)-s.hidden.ppm[id]*.1)<1e-7))return false;
     }
-    const validRow=r=>['Original',...Object.keys(ROUTES)].includes(r.route)&&text(r.step)&&text(r.title)&&text(r.reagent)&&finite(r.time)&&finite(r.duration)&&typeof r.equation==='string'&&OBS_FIELDS.every(([id])=>typeof r.draft[id]==='string'&&r.draft[id].length<=3000);
+    const validRow=r=>['Original',...Object.keys(ROUTES)].includes(r.route)&&text(r.step)&&text(r.title)&&text(r.reagent)&&finite(r.time)&&finite(r.duration)&&typeof r.equation==='string'&&OBS_FIELDS.every(([id])=>typeof r.draft[id]==='string'&&r.draft[id].length<=3000)&&(r.procedure===undefined||Array.isArray(r.procedure)&&r.procedure.length<=50&&r.procedure.every(v=>typeof v==='string'&&v.length<300));
     if(!Array.isArray(s.journal)||s.journal.length>100||!s.journal.every(validRow)||s.pending&&!validRow(s.pending))return false;
     if(!Array.isArray(s.instruments)||s.instruments.length>20||!s.instruments.every(r=>Object.hasOwn(INSTRUMENTS,r.method)&&Object.hasOwn(s.portions,r.source)&&['bulk','solution','solid'].includes(r.fraction)&&Number.isInteger(r.grain)&&r.grain>=0&&r.grain<=2&&Array.isArray(r.readings)&&r.readings.length===7&&r.readings.every(v=>TARGETS.includes(v.element)&&finite(v.truth)&&(v.limit===null||finite(v.limit))&&(v.value===null||finite(v.value))&&typeof v.detected==='boolean')))return false;
     return !s.revealed||mineralComplete(s)&&s.instruments.length>0;

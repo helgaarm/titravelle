@@ -27,6 +27,8 @@ Represent hazardous digestion and decomposition as contained virtual operations 
 
 ## Consequences
 
+[ADR-0006](0006-hands-on-mineral-apparatus.md) extends this workflow with explicit sample preparation and apparatus operations before observation entry. The independent-aliquot and evidence decisions below continue to apply.
+
 Each new operation must preserve target inventory and sample identity, retain its observation history, enforce relevant sequence/hood gates and label analytical limitations. Controls can invalidate a result. Incomplete dissolution, interferences and uneven sampling can disagree with the hidden bulk composition without constituting an engine failure.
 
 The model conserves selected targets, not every matrix atom, reagent or solvent. It cannot certify the composition or safety of a real sample. Interface blindness is educational only because the hidden recipe is stored locally. [ADR-0004](0004-learning-mode-contract.md) defines the implemented learning-mode presentation; [ADR-0005](0005-mineral-conclusion-drafts.md) defines unfinished conclusion persistence.

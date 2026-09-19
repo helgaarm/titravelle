@@ -104,7 +104,7 @@ export function startLab() {
     const e=study(), aqueous=stationOf(state)==='aqueous';
     const header=`<div class="sl-heading"><div><div class="sl-eyebrow">THE OPEN LABORATORY</div><h1>Your chemistry laboratory.</h1><p>${!e.id?'Free exploration. No experiment selected. Use the shared shelf and equipment to explore your own question.':state.mode==='free'?'Follow your question with the shared shelf and equipment.':`Experiment guide: <strong>${esc(e.title)}</strong>. All equipment is available.`}</p></div><div class="sl-mode">${select('sl-mode','Learning mode',Object.entries(MODES).map(([id,label])=>option(id,label,state.mode)).join(''))}${aqueous||stationOf(state)==='electro'?`<label class="sl-check"><input id="sl-ideal" type="checkbox" ${state.ideal?'checked':''}>Ideal measurements</label>`:stationOf(state)==='mineral'?'<p class="sl-small">Mineral tools follow the learning mode. Assessment retains observations and your writing, and withholds model feedback and instrument submission.</p>':'<p class="sl-small">Organic tools use an open research view and their own stated uncertainties.</p>'}</div></div>${stationOf(state)==='electro'?'<p class="sl-small">Electrochemistry uses open analytical feedback in every learning mode; preset instructions appear in Guided mode.</p>':''}${stationControls()}${safetyPanel()}${state.organic&&( !aqueous || Object.values(state.organic.charged).some(Boolean))?organicPrecautions(state.organic):''}${state.mode==='guided'&&aqueous&&e.id&&e.id!=='soi18'?`<details class="sl-guide" open><summary>Your investigation · ${esc(e.question)}</summary><ol>${e.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></details>`:''}`;
     const guide = state.study==='soi18' && state.organic ? organicGuideView(state.organic,state,guidePreview) : '';
-    return header+guide+(aqueous?aqueousBench():stationOf(state)==='mineral'?mineralView(state.mineral,{shelf:sharedShelf(),ventilationOn:state.ventilationOn===true,panel:mineralPanel,canUndo:undo.length>0,mode:state.mode}):stationOf(state)==='electro'?electroView(state.electro,{shelf:sharedShelf(),selected:selectedCatalog,panel:electroPanel,running:electroTimer!==null,guided:Boolean(e.preset)&&state.mode==='guided',canUndo:undo.length>0,selectedTerminal:electroTerminal,supplyDraft:electroSupplyDraft,predictionDraft:electroPredictionDraft}):organicView(state.organic,{tab:stationOf(state),shelf:sharedShelf(),canUndo:undo.length>0}));
+    return header+guide+(aqueous?aqueousBench():stationOf(state)==='mineral'?mineralView(state.mineral,{shelf:sharedShelf(),ventilationOn:state.ventilationOn===true,panel:mineralPanel,canUndo:undo.length>0,mode:state.mode,selectedReagent:selectedCatalog}):stationOf(state)==='electro'?electroView(state.electro,{shelf:sharedShelf(),selected:selectedCatalog,panel:electroPanel,running:electroTimer!==null,guided:Boolean(e.preset)&&state.mode==='guided',canUndo:undo.length>0,selectedTerminal:electroTerminal,supplyDraft:electroSupplyDraft,predictionDraft:electroPredictionDraft}):organicView(state.organic,{tab:stationOf(state),shelf:sharedShelf(),canUndo:undo.length>0}));
   }
   function aqueousBench() {
     const e = study(), v = state.vessels[state.selected], c = chemistry(v), look = appearance(v), assessment = state.mode === 'assessment';
@@ -324,6 +324,11 @@ export function startLab() {
     if(activeTransfer)return;
     const el = event.target;
     if(captureMineralConclusion(el))return;
+    if(el.id==='mn-nugget'){try{state.mineral=operateMineral(state.mineral,'bench-nugget',{nugget:el.checked});save();}catch(error){notify(error.message);}return;}
+    if(['mn-exposure','mn-sample-fraction'].includes(el.id)){
+      try{state.mineral=operateMineral(state.mineral,'bench-settings',{exposure:Number(document.getElementById('mn-exposure').value),sampleFraction:Number(document.getElementById('mn-sample-fraction')?.value??.1)});save();draw();document.getElementById(el.id)?.focus({preventScroll:true});}catch(error){notify(error.message);}return;
+    }
+    if(el.id==='mn-reagent'){if(LAB_MATERIALS.some(r=>r.catalogId===el.value)){selectedCatalog=el.value;save();}return;}
     if(el.id==='el-speed'){electroSpeed=Number(el.value);return;}
     if(el.closest('#el-supply-form')){captureSupplyDraft(el);return;}
     const changes = {
@@ -342,6 +347,7 @@ export function startLab() {
     if(mineralControl&&!mineralControl.disabled&&!activeTransfer&&stationOf(state)==='mineral'){
       try{
         const action=mineralControl.dataset.mineral;
+        if(action==='record-open'){document.getElementById('mn-observation-notes').open=true;document.getElementById('mn-observation')?.scrollIntoView({block:'start'});document.getElementById('mn-observe-interpretation')?.focus();return;}
         if(action==='report'){mineralPanel='report';draw();document.querySelector('.mn-nav')?.scrollIntoView({block:'start'});document.getElementById('mn-tab-report')?.focus({preventScroll:true});return;}
         if(action==='export-report'||action==='export-csv'){download(action==='export-report'?'mineral-investigation.md':'mineral-observations.csv',action==='export-report'?mineralReport(state.mineral,{mode:state.mode}):mineralCSV(state.mineral),action==='export-report'?'text/markdown;charset=utf-8':'text/csv;charset=utf-8');return;}
         if(action==='snapshot'){
@@ -350,15 +356,24 @@ export function startLab() {
         }
         if(action==='instrument'&&!mineralPresentation(state.mode).confirmation)throw Error('Instrument submission is withheld in Assessment mode. Recorded observations remain available.');
         const form=mineralControl.closest('form'),args={route:mineralControl.dataset.route||state.mineral.route};
-        if(form){if(!form.reportValidity())return;for(const el of form.elements)if(el.name)args[el.name]=el.type==='checkbox'?el.checked:el.name==='grain'?Number(el.value):el.value;}
-        if(action==='split')args.nugget=document.getElementById('mn-nugget').checked;
-        if(action==='step')args.spike=document.getElementById('mn-spike')?.checked!==false;
+        if(form){if((form.id!=='mn-apparatus-form'||action==='bench-add')&&!form.reportValidity())return;for(const el of form.elements)if(el.name)args[el.name]=el.type==='checkbox'?el.checked:['grain','charge','exposure','sampleFraction'].includes(el.name)?Number(el.value):el.value;}
+        if(action==='split'){args.nugget=document.getElementById('mn-nugget').checked;args.fromBench=true;}
+        if(action==='bench-weigh')args.portion=mineralControl.dataset.portion;
+        if(action==='bench-control')args.lane=mineralControl.dataset.lane;
+        const priorScroll=window.scrollY;
         const result=operateMineral(state.mineral,action,args,{ventilationOn:state.ventilationOn===true});
         if(action!=='select')remember();state.mineral=result;if(action==='select')mineralPanel='route';save();draw();
-        const target=state.mineral.pending?'mn-observation':action==='instrument'?'mn-truth':action==='select'?`mn-tab-${state.mineral.route}`:'mn-action';
-        (action==='select'?document.querySelector('.mn-nav'):document.getElementById(target))?.scrollIntoView({block:'start',behavior:'instant'});
-        document.getElementById(target)?.focus({preventScroll:true});
-        notify(action==='record'?'Observation recorded. Continue with the next step.':action==='conclude'?mineralPresentation(state.mode).feedback?'Conclusion recorded. Compare it with the model interpretation.':'Your conclusion has been recorded.':action==='select'?`Aliquot ${state.mineral.route} route selected.`:state.mineral.pending?'Review the observations and add your interpretation before continuing.':'Analytical operation recorded.');
+        const target=action==='bench-run'?'mn-workbench':action.startsWith('bench-')?!state.mineral.split?'mn-preparation':'mn-workbench':state.mineral.pending?'mn-observation-notes':action==='instrument'?'mn-truth':action==='select'?`mn-tab-${state.mineral.route}`:'mn-action';
+        if(action.startsWith('bench-')&&action!=='bench-run'){
+          const controls=[...document.querySelectorAll('#mn-apparatus-form button, #mn-apparatus-form input, #mn-apparatus-form select, #mn-preparation button')];
+          const index=controls.findIndex(el=>el.dataset.mineral===action&&el.dataset.portion===mineralControl.dataset.portion&&el.dataset.lane===mineralControl.dataset.lane);
+          const next=controls.slice(Math.max(0,index)).find(el=>!el.disabled);
+          window.scrollTo({top:priorScroll,behavior:'instant'});next?.focus({preventScroll:true});
+        }else{
+          (action==='select'?document.querySelector('.mn-nav'):document.getElementById(target))?.scrollIntoView({block:'start',behavior:'instant'});
+          document.getElementById(target)?.focus({preventScroll:true});
+        }
+        notify(action==='bench-run'?'Analysis completed. Inspect the apparatus and test results, then record your interpretation.':action==='record'?'Observation recorded. Set up the next analysis.':action==='conclude'?mineralPresentation(state.mode).feedback?'Conclusion recorded. Compare it with the model interpretation.':'Your conclusion has been recorded.':action==='select'?`Aliquot ${state.mineral.route} route selected.`:state.mineral.pending?'Samples are ready. Record their initial condition to continue.':'Apparatus updated.');
       }catch(error){notify(error.message);}return;
     }
     const electroControl=event.target.closest('[data-electro]');
