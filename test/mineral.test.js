@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createMineral,operateMineral,validMineral,mineralComplete,mineralConclusion,mineralComparison,mineralReport,mineralCSV} from '../src/mineral-engine.js';
+import {createMineral,operateMineral,validMineral,mineralComplete,mineralConclusion,mineralComparison,mineralReport,mineralCSV,mineralPresentation,mineralConclusionDraft,editMineralConclusionDraft,mineralSnapshotReport,mineralNotebookNotes} from '../src/mineral-engine.js';
 import {MINERAL_STEPS,TARGETS,INSTRUMENTS,MINERAL_STUDIES} from '../src/mineral-data.js';
 import {mineralView} from '../src/mineral-ui.js';
 import {createLab,validateLab,operate} from '../src/lab-engine.js';
@@ -105,4 +105,70 @@ test('mineral equipment and stocks belong to the shared lab, with persistence, h
   for(const material of LAB_MATERIALS.filter(r=>r.scope==='mineral')){const next=operate(lab,'add-material',{vessel:'beaker',material:material.id,mass:.1,volume:.1,form:material.form}).state;assert.equal(validateLab(next),true);}
   lab.notes=[{title:'Mineral report',date:new Date().toISOString(),draft:{conclusion:'Retain this.'},measurements:[],log:[],mineralReport:mineralReport(lab.mineral)}];
   const fresh=restartLab(lab,null);assert.equal(fresh.mineral,undefined);assert.deepEqual(fresh.notes,lab.notes);assert.equal(fresh.study,null);
+});
+
+test('mineral conclusion drafts remain independent, unsubmitted and compatible with older saves',()=>{
+  const original=prepared(12),before=structuredClone(original);
+  let s=editMineralConclusionDraft(original,'A',{reason:'Compare A with B before deciding.',confidence:'Probable',compared:true});
+  s=editMineralConclusionDraft(s,'B',{reason:'B has a different control response.',confidence:'Inconclusive'});
+  assert.deepEqual(original,before);
+  const {runs,...rest}=s,{runs:oldRuns,...oldRest}=original;assert.deepEqual(rest,oldRest);
+  for(const id of ['A','B','C','D']){const {conclusionDraft,...run}=runs[id],{conclusionDraft:oldDraft,...oldRun}=oldRuns[id];assert.deepEqual(run,oldRun);}
+  s=op(s,'select',{route:'B'});s=op(s,'select',{route:'A'});
+  assert.deepEqual(mineralConclusionDraft(s),{confidence:'Probable',reason:'Compare A with B before deciding.',compared:true});
+  assert.equal(mineralConclusionDraft(s,'B').reason,'B has a different control response.');
+  assert.equal(mineralComplete(s),false);assert.equal(validMineral(JSON.parse(JSON.stringify(s))),true);
+  assert.match(mineralReport(s),/Unsubmitted conclusion drafts/);assert.doesNotMatch(mineralReport(s,{includeDrafts:false}),/Compare A with B before deciding/);
+  const legacy=structuredClone(s);for(const r of Object.values(legacy.runs))delete r.conclusionDraft;
+  assert.equal(validMineral(legacy),true);assert.deepEqual(mineralConclusionDraft(legacy),{confidence:'',reason:'',compared:false});
+  assert.equal(validMineral(editMineralConclusionDraft(legacy,'A',{reason:'Old save can be edited.'})),true);
+  for(const bad of [null,[],{confidence:'certain',reason:'x',compared:false},{confidence:'',reason:'x'.repeat(3001),compared:false},{confidence:'',reason:42,compared:false},{confidence:'',reason:'',compared:'yes'},{confidence:'',reason:'',compared:false,other:'x'}]){const saved=structuredClone(s);saved.runs.A.conclusionDraft=bad;assert.equal(validMineral(saved),false);}
+  assert.throws(()=>editMineralConclusionDraft(s,'constructor',{reason:'x'}),/aliquots/);
+  assert.throws(()=>editMineralConclusionDraft(s,'A',{confidence:'certain'}),/confidence/);
+  let lab=openStation(createLab(8),'mineral');lab.mineral=s;lab=openStation(lab,'aqueous');assert.equal(validateLab(lab),true);assert.equal(lab.mineral.runs.A.conclusionDraft.reason,runs.A.conclusionDraft.reason);
+  assert.equal(restartLab(lab,null).mineral,undefined);
+});
+
+test('conclusion submission preserves rejected drafts and commits exactly once with safe rendering',()=>{
+  let s=prepared(3);while(s.runs.A.index<5)s=record(op(s,'step'));
+  const reason='<img src=x onerror=alert(1)> My own reasoning.';
+  s=editMineralConclusionDraft(s,'A',{confidence:'Probable',reason,compared:true});const before=structuredClone(s);
+  for(const args of [{confidence:''},{reason:''},{compared:false}])assert.throws(()=>op(s,'conclude',{...mineralConclusionDraft(s),...args}),/Compare/);
+  assert.deepEqual(s,before);assert.doesNotMatch(mineralView(s),/<img src=x/);assert.match(mineralView(s),/&lt;img/);
+  const done=op(s,'conclude',mineralConclusionDraft(s));assert.deepEqual(done.runs.A.learner,{confidence:'Probable',reason});
+  assert.deepEqual(mineralConclusionDraft(done),{confidence:'',reason:'',compared:false});assert.equal(validMineral(done),true);
+  assert.throws(()=>op(done,'conclude',mineralConclusionDraft(s)),/already/);assert.throws(()=>editMineralConclusionDraft(done,'A',{reason:'Replace'}),/already/);
+  assert.deepEqual(s,before,'The pre-operation checkpoint retains the unfinished draft for Undo');
+});
+
+test('mineral modes hide generated guidance and answers while retaining evidence and safety',()=>{
+  let s=prepared(4);const pending=op(s,'step');
+  s=complete(4);s=op(s,'instrument',{method:'ms'});const before=structuredClone(s);
+  for(const mode of ['guided','student','free','assessment','professor']){
+    const presentation=mineralPresentation(mode),view=mineralView(s,{mode}),reportView=mineralView(s,{mode,panel:'report'}),report=mineralReport(s,{mode}),stepView=mineralView(pending,{mode});
+    assert.equal(stepView.includes('class="mn-advice"'),mode==='guided');
+    assert.match(mineralView(prepared(4),{mode}),/Virtual fume hood OFF/);assert.match(stepView,/id="mn-record-form"/);assert.match(stepView,/id="mn-next"/);
+    assert.match(view,/Your conclusion/);assert.match(view,/mn-vial-card/);assert.match(report,/Recovery and test specificity limit the claim/);
+    assert.equal(view.includes('mn-model-feedback'),mode!=='assessment');
+    assert.equal(reportView.includes('id="mn-instrument-form"'),mode!=='assessment');
+    assert.equal(reportView.includes('id="mn-truth"'),mode!=='assessment');
+    assert.equal(report.includes('## Simulator ground truth'),mode!=='assessment');
+    assert.equal(presentation.equations,mode!=='assessment');
+    for(const row of s.journal.filter(r=>r.equation))assert.equal(report.includes(row.equation),mode!=='assessment');
+    assert.match(report,/Recorded observations/);assert.match(report,/ICP-MS/);assert.match(reportView,/ICP-MS/);
+    if(mode==='assessment'){assert.doesNotMatch(stepView,/class="mn-equation"/);for(const r of Object.values(s.runs)){assert.ok(!report.includes(r.conclusion.reason));assert.ok(!reportView.includes(r.conclusion.result));}}
+  }
+  assert.deepEqual(s,before);
+  const unfinished=prepared(1);assert.throws(()=>op(unfinished,'instrument',{method:'ms'}),/all four/);
+  assert.doesNotMatch(mineralView(unfinished,{mode:'professor',panel:'report'}),/id="mn-truth"/);
+});
+
+test('assessment notebook exports use immutable safe copies and do not expose older model reports',()=>{
+  const s=op(complete(5),'instrument',{method:'ms'}),full=mineralReport(s),safe=mineralReport(s,{mode:'assessment'});
+  const notes=[{mode:'guided',mineralReport:full,mineralAssessmentReport:safe},{mode:'assessment',mineralReport:full},{title:'Other experiment',draft:{conclusion:'User text'}}];
+  const before=structuredClone(notes),exported=mineralNotebookNotes(notes,'assessment');
+  assert.equal(mineralSnapshotReport(notes[0],'assessment'),safe);assert.equal(mineralSnapshotReport(notes[1],'assessment'),null,'Legacy Assessment snapshots previously contained full answers');
+  assert.equal(mineralSnapshotReport(notes[0],'professor'),full);
+  assert.doesNotMatch(JSON.stringify(exported),/## Simulator ground truth/);assert.match(exported[0].mineralReport,/Recorded observations/);
+  assert.equal(exported[2].draft.conclusion,'User text');assert.deepEqual(notes,before);assert.deepEqual(mineralNotebookNotes(notes,'guided'),notes);
 });

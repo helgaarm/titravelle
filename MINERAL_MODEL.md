@@ -2,7 +2,17 @@
 
 Mineral analysis is equipment in the shared laboratory. Five catalog entries open a complete four-route investigation or begin with Ag, Au, Pt or REE screening. Every entry retains access to all four routes, the shared shelf, ventilation, undo, notebook and reset controls. Arbitrary material added to ordinary glassware remains a material ledger; it is not silently substituted into the specialized geological sample.
 
-[ADR-0003](docs/adr/0003-mineral-evidence-workflow.md) records why the routes use independent portions, analytical controls and delayed instrumental comparison. Learning-mode restrictions currently do not change the mineral view: guidance, equations and model feedback remain available in Student and Assessment as well as Guided. Instrumental comparison still requires all four completed conclusions. [ADR-0004](docs/adr/0004-learning-mode-contract.md) proposes an explicit presentation contract; it has not been implemented.
+[ADR-0003](docs/adr/0003-mineral-evidence-workflow.md) records why the routes use independent portions, analytical controls and delayed instrumental comparison. [ADR-0004](docs/adr/0004-learning-mode-contract.md) defines the implemented learning-mode presentation. Instrumental comparison requires all four completed conclusions and a mode that permits new instrument submissions; selecting Professor does not bypass the evidence gates.
+
+| Mode | Optional step advice | Equations and generated interpretation | New instrument submissions and eligible simulator truth |
+| --- | --- | --- | --- |
+| Guided | Shown | Shown | Available after the evidence gates |
+| Student | Hidden | Shown | Available after the evidence gates |
+| Free exploration | Hidden | Shown | Available after the evidence gates |
+| Assessment | Hidden | Hidden | Withheld |
+| Professor | Hidden | Shown | Available after the evidence gates |
+
+Every mode retains sample identity, operation controls, required observation entry, safety/ventilation, learner conclusions and previously recorded instrument readings. Switching modes changes presentation, not chemistry, samples, observations or drafts. Assessment reports omit generated equations, model interpretations and simulator truth. New notebook snapshots include a separate immutable Assessment report; old snapshots without that copy require another mode to download their full report. Notebook JSON export in Assessment also uses the restricted report copies. Raw browser state remains locally inspectable, and learner-written text is preserved; this is not examination security.
 
 ## Sample and accounting
 
@@ -42,4 +52,4 @@ Digestion is an abstract contained operation requiring the shared virtual hood. 
 
 Pending observations and completed routes survive reloads and equipment changes. Snapshots retain a report and observation CSV in the existing notebook; exports reveal truth only after instrumental comparison. Reset clears working samples and keeps saved notebook entries. Tests cover deterministic unknowns, presence/absence fixtures, target conservation, nugget allocation, reagent/control failures, hood/sequence/record gates, optional stages, method limits, blind reporting, malformed saved state, escaping, shared shelf/undo/reset and 320/390 px browser layouts.
 
-Unsubmitted route conclusions are a known exception: their confidence and reasoning currently reset when the view redraws. Submit the conclusion before navigating away. [ADR-0005](docs/adr/0005-mineral-conclusion-drafts.md) records the proposed persistence fix and its acceptance checks; this documentation change does not resolve that defect.
+Unsubmitted conclusions persist separately for A, B, C and D, including confidence, reasoning and the control-comparison checkbox. A new/legacy empty draft has no confidence selected. Editing does not consume material, advance time or produce a conclusion. Successful submission commits once; rejected submissions keep the draft. Working Markdown and notebook JSON reports label unfinished drafts explicitly; saved snapshots omit them. Session Undo restores operation checkpoints, including a pre-submission draft; it is not per-keystroke text history. Reset intentionally clears working drafts. [ADR-0005](docs/adr/0005-mineral-conclusion-drafts.md) records this policy, backward-compatible validation and regression coverage.

@@ -16,7 +16,7 @@ Use the shared shelf, qualitative hazard panel, ventilation setting, session und
 
 Use local ES modules and HTML/CSS/SVG with no npm runtime dependencies or remote runtime assets. A Node.js static server binds to loopback by default, restricts served paths and methods, validates Host headers on loopback bindings and supplies browser security headers. It does not store experiments or expose a chemistry API.
 
-Persist validated state in browser localStorage under `titravelle-science-lab-v2`; export notebooks for portable records. A full restart clears working runs while preserving saved snapshots, custom studies and ventilation. Undo is limited to the current page session. This is the implemented persistence policy, not a guarantee that every unfinished form is already persisted; [ADR-0005](0005-mineral-conclusion-drafts.md) records a known gap.
+Persist validated state in browser localStorage under `titravelle-science-lab-v2`; export notebooks for portable records. A full restart clears working runs while preserving saved snapshots, custom studies and ventilation. Undo is limited to the current page session. This is the implemented persistence policy, not a guarantee that every unfinished form is persisted; [ADR-0005](0005-mineral-conclusion-drafts.md) defines persistence for unfinished mineral conclusions.
 
 ## Alternatives
 
